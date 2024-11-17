@@ -1,0 +1,23 @@
+{
+    "appId": "com.anonymouse",
+    "productName": "AnonyMouse",
+    "icon": "src/ui/assets/mouse.png",
+    "files": [
+      "dist-react/**/*",
+      "node_modules/**/*",
+      "package.json",
+      "src/electron/main.js"
+    ],
+    "mac": {
+        "target": "dmg"
+    },
+    "linux": {
+        "target": "AppImage"
+    },
+    "win": {
+        "target": ["portable", "msi"]
+    },
+    "directories": {
+      "output": "dist"
+    }
+}
