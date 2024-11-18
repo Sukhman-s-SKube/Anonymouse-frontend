@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './App.css'; // Make sure to create this file
 
-import '../encryption/wasm_exec.js';
+import './wasm_exec.js';
 
 function test() {
   return new Promise((resolve) => {
@@ -21,7 +21,7 @@ function App() {
   useEffect(() => {
     async function loadWasm() {
       const goWasm = new window.Go();
-      const result = await WebAssembly.instantiateStreaming(fetch('src/encryption/main.wasm'), goWasm.importObject);
+      const result = await WebAssembly.instantiateStreaming(fetch('main.wasm'), goWasm.importObject);
 
       goWasm.run(result.instance);
       setIsWasmLoaded(true);
