@@ -16,7 +16,7 @@ func main() {
 
 	js.Global().Set("encryptMsg", js.FuncOf(encryptMsg))
 	js.Global().Set("decryptMsg", js.FuncOf(decryptMsg))
-	js.Global().Set("generateDHPublics", js.FuncOf(generateDHPublics))
+	js.Global().Set("generateDHKeys", js.FuncOf(generateDHKeys))
 
 	<-done
 }
@@ -116,7 +116,7 @@ func decryptMsg(this js.Value, args []js.Value) interface{} {
 }
 
 // Parameters (1): numKeys int
-func generateDHPublics(this js.Value, args []js.Value) interface{} {
+func generateDHKeys(this js.Value, args []js.Value) interface{} {
 	var result map[string]interface{}
 
 	if len(args) < 1 {
@@ -182,7 +182,7 @@ func encryptGCM(key, msg []byte) (string, error) {
 		return "", err
 	}
 
-	cipherBytes := gcm.Seal(nonce, nonce, msg, nil)
+	cipherBytes := gcm.Seal(nil, nonce, msg, nil)
 	cipherText := hex.EncodeToString(cipherBytes)
 
 	return cipherText, nil
