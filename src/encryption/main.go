@@ -16,6 +16,7 @@ func main() {
 
 	js.Global().Set("encryptMsg", js.FuncOf(encryptMsg))
 	js.Global().Set("decryptMsg", js.FuncOf(decryptMsg))
+	js.Global().Set("generateDHPublics", js.FuncOf(generateDHPublics))
 
 	<-done
 }
@@ -110,6 +111,34 @@ func decryptMsg(this js.Value, args []js.Value) interface{} {
 	}
 
 	result["msg"] = plainText
+
+	return result
+}
+
+// Parameters (1): numKeys int
+func generateDHPublics(this js.Value, args []js.Value) interface{} {
+	var result map[string]interface{}
+
+	if len(args) < 1 {
+		result["error"] = "Invalid number of args"
+		return result
+	}
+
+	numKeys := args[0].Int()
+
+	crv := ecdh.P256()
+
+	for i := 0; i < numKeys; i++ {
+		prvKey, err := crv.GenerateKey(rand.Reader)
+		if err != nil {
+			result["error"] = err.Error()
+			return result
+		}
+
+		pubKey := hex.EncodeToString(prvKey.PublicKey().Bytes())
+		prvKeyStr := hex.EncodeToString(prvKey.Bytes())
+		result[pubKey] = prvKeyStr
+	}
 
 	return result
 }
