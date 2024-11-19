@@ -31,7 +31,9 @@ function App() {
   }, []);
 
   const handleWASM = async () => {
-    await test();
+    const t = await test();
+    console.log(t);
+    
   }
 
   const handleChange = (e) => {
@@ -74,7 +76,7 @@ function App() {
           />
         </div>
         <button type="submit">Login</button>
-        <button type="button" onClick={handleWASM}>Handle WASM</button>
+        {/* <button type="button" onClick={handleWASM}>Handle WASM</button> */}
       </form>
     </div>
   );
