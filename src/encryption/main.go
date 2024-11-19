@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"syscall/js"
 )
 
@@ -14,10 +15,12 @@ func main() {
 	done := make(chan struct{}, 0)
 
 	js.Global().Set("encryptMsg", js.FuncOf(encryptMsg))
+	js.Global().Set("decryptMsg", js.FuncOf(decryptMsg))
 
 	<-done
 }
 
+// Paramters (3): otherPubDH string, msg string, timestamp string
 func encryptMsg(this js.Value, args []js.Value) interface{} {
 	var result map[string]interface{}
 
@@ -26,13 +29,23 @@ func encryptMsg(this js.Value, args []js.Value) interface{} {
 		return result
 	}
 
-	otherPubDHBytes := make([]byte, args[0].Get("length").Int())
-	js.CopyBytesToGo(otherPubDHBytes, args[0])
+	otherPubDHBytes, err := hex.DecodeString(args[0].String())
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
 
 	msg := []byte(args[1].String())
 	timestamp := []byte(args[2].String())
 
-	masterSec, pubKey, err := generateMasterSecret(otherPubDHBytes, timestamp)
+	crv := ecdh.P256()
+	prvKey, err := crv.GenerateKey(rand.Reader)
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+
+	masterSec, pubKey, err := generateMasterSecret(otherPubDHBytes, timestamp, prvKey)
 	if err != nil {
 		result["error"] = err.Error()
 		return result
@@ -49,14 +62,61 @@ func encryptMsg(this js.Value, args []js.Value) interface{} {
 	return result
 }
 
-func generateMasterSecret(otherPubDHBytes, timestamp []byte) ([]byte, string, error) {
-	crv := ecdh.P256()
-	otherPubDH, err := crv.NewPublicKey(otherPubDHBytes)
-	if err != nil {
-		return nil, "", err
+// Paramters (4): otherPubDH string, myPrvDH string, cipherText string, timestamp string
+func decryptMsg(this js.Value, args []js.Value) interface{} {
+	var result map[string]interface{}
+
+	if len(args) < 4 {
+		result["error"] = "Invalid number of args"
+		return result
 	}
 
-	prvKey, err := crv.GenerateKey(rand.Reader)
+	otherPubDHBytes, err := hex.DecodeString(args[0].String())
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+	prvDHBytes, err := hex.DecodeString(args[1].String())
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+
+	cipherBytes, err := hex.DecodeString(args[2].String())
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+
+	timestamp := []byte(args[3].String())
+
+	crv := ecdh.P256()
+	prvDH, err := crv.NewPrivateKey(prvDHBytes)
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+
+	masterSecret, _, err := generateMasterSecret(otherPubDHBytes, timestamp, prvDH)
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+
+	plainText, err := decryptGCM(masterSecret, cipherBytes)
+	if err != nil {
+		result["error"] = err.Error()
+		return result
+	}
+
+	result["msg"] = plainText
+
+	return result
+}
+
+func generateMasterSecret(otherPubDHBytes, timestamp []byte, prvKey *ecdh.PrivateKey) ([]byte, string, error) {
+	crv := ecdh.P256()
+	otherPubDH, err := crv.NewPublicKey(otherPubDHBytes)
 	if err != nil {
 		return nil, "", err
 	}
@@ -97,4 +157,32 @@ func encryptGCM(key, msg []byte) (string, error) {
 	cipherText := hex.EncodeToString(cipherBytes)
 
 	return cipherText, nil
+}
+
+func decryptGCM(key, cipherBytes []byte) (string, error) {
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	if len(cipherBytes) < gcm.NonceSize() {
+		return "", errors.New("Ciphertext too short")
+	}
+
+	nonce := cipherBytes[:gcm.NonceSize()]
+	cipherBytes = cipherBytes[gcm.NonceSize():]
+
+	plainBytes, err := gcm.Open(nil, nonce, cipherBytes, nil)
+	if err != nil {
+		return "", err
+	}
+
+	plainText := hex.EncodeToString(plainBytes)
+
+	return plainText, nil
 }
