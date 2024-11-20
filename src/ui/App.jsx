@@ -1,12 +1,40 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './App.css'; // Make sure to create this file
 
+import './wasm_exec.js';
+
+function test() {
+  return new Promise((resolve) => {
+    const res = window.test();
+    resolve(res);
+  })
+}
+
 function App() {
+  const [isWasmLoaded, setIsWasmLoaded] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [credentials, setCredentials] = useState({
     username: '',
     password: '',
   });
+
+  useEffect(() => {
+    async function loadWasm() {
+      const goWasm = new window.Go();
+      const result = await WebAssembly.instantiateStreaming(fetch('main.wasm'), goWasm.importObject);
+
+      goWasm.run(result.instance);
+      setIsWasmLoaded(true);
+    }
+
+    loadWasm();
+  }, []);
+
+  const handleWASM = async () => {
+    const t = await test();
+    console.log(t);
+    
+  }
 
   const handleChange = (e) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
@@ -48,6 +76,7 @@ function App() {
           />
         </div>
         <button type="submit">Login</button>
+        {/* <button type="button" onClick={handleWASM}>Handle WASM</button> */}
       </form>
     </div>
   );
