@@ -23,7 +23,7 @@ func main() {
 
 // Paramters (3): otherPubDH string, msg string, timestamp string
 func encryptMsg(this js.Value, args []js.Value) interface{} {
-	var result map[string]interface{}
+	result := make(map[string]interface{})
 
 	if len(args) < 3 {
 		result["error"] = "Invalid number of args"
@@ -65,7 +65,7 @@ func encryptMsg(this js.Value, args []js.Value) interface{} {
 
 // Paramters (4): otherPubDH string, myPrvDH string, cipherText string, timestamp string
 func decryptMsg(this js.Value, args []js.Value) interface{} {
-	var result map[string]interface{}
+	result := make(map[string]interface{})
 
 	if len(args) < 4 {
 		result["error"] = "Invalid number of args"
@@ -117,7 +117,7 @@ func decryptMsg(this js.Value, args []js.Value) interface{} {
 
 // Parameters (1): numKeys int
 func generateDHKeys(this js.Value, args []js.Value) interface{} {
-	var result map[string]interface{}
+	result := make(map[string]interface{})
 
 	if len(args) < 1 {
 		result["error"] = "Invalid number of args"
