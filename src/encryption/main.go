@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"log"
 	"syscall/js"
 )
 
@@ -67,12 +66,13 @@ func encryptMsg(this js.Value, args []js.Value) interface{} {
 	}
 	result["pubKey"] = pubKey
 
-	cipherText, err := encryptGCM(masterSec, msg)
+	cipherText, err, nonce := encryptGCM(masterSec, msg)
 	if err != nil {
 		result["error"] = err.Error()
 		return result
 	}
 	result["cipherText"] = cipherText
+	result["nonce"] = nonce
 
 	return result
 }
@@ -186,27 +186,26 @@ func generateMasterSecret(otherPubDHBytes, timestamp []byte, prvKey *ecdh.Privat
 	return masterSec, hex.EncodeToString(pubKey), nil
 }
 
-func encryptGCM(key, msg []byte) (string, error) {
+func encryptGCM(key, msg []byte) (string, error, string) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", err
+		return "", err, ""
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return "", err
+		return "", err, ""
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
-		return "", err
+		return "", err, ""
 	}
 
 	cipherBytes := gcm.Seal(nil, nonce, msg, nil)
 	cipherText := hex.EncodeToString(cipherBytes)
-	log.Print(cipherText)
 
-	return hex.EncodeToString(nonce), nil
+	return cipherText, nil, hex.EncodeToString(nonce)
 }
 
 func decryptGCM(key, cipherBytes []byte) (string, error) {
