@@ -66,13 +66,12 @@ func encryptMsg(this js.Value, args []js.Value) interface{} {
 	}
 	result["pubKey"] = pubKey
 
-	cipherText, err, nonce := encryptGCM(masterSec, msg)
+	cipherText, err := encryptGCM(masterSec, msg)
 	if err != nil {
 		result["error"] = err.Error()
 		return result
 	}
 	result["cipherText"] = cipherText
-	result["nonce"] = nonce
 
 	return result
 }
@@ -121,7 +120,7 @@ func decryptMsg(this js.Value, args []js.Value) interface{} {
 
 	plainText, err := decryptGCM(masterSecret, cipherBytes)
 	if err != nil {
-		result["error"] = plainText
+		result["error"] = err.Error()
 		return result
 	}
 
@@ -156,7 +155,6 @@ func generateDHKeys(this js.Value, args []js.Value) interface{} {
 		prvKeyStr := hex.EncodeToString(prvKey.Bytes())
 		key := DHKey{i, pubKey, prvKeyStr}
 		result.Keys = append(result.Keys, key)
-		// result[strconv.Itoa(i)] = make(map[string]string)
 	}
 
 	res, _ := json.Marshal(result)
@@ -186,41 +184,41 @@ func generateMasterSecret(otherPubDHBytes, timestamp []byte, prvKey *ecdh.Privat
 	return masterSec, hex.EncodeToString(pubKey), nil
 }
 
-func encryptGCM(key, msg []byte) (string, error, string) {
+func encryptGCM(key, msg []byte) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", err, ""
+		return "", err
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return "", err, ""
+		return "", err
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
-		return "", err, ""
+		return "", err
 	}
 
-	cipherBytes := gcm.Seal(nil, nonce, msg, nil)
+	cipherBytes := gcm.Seal(nonce, nonce, msg, nil)
 	cipherText := hex.EncodeToString(cipherBytes)
 
-	return cipherText, nil, hex.EncodeToString(nonce)
+	return cipherText, nil
 }
 
 func decryptGCM(key, cipherBytes []byte) (string, error) {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "GCM 1", err
+		return "", err
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return "GCM 2", err
+		return "", err
 	}
 	if len(cipherBytes) < gcm.NonceSize() {
-		return "GCM 3", errors.New("Ciphertext too short")
+		return "", errors.New("Ciphertext too short")
 	}
 
 	nonce := cipherBytes[:gcm.NonceSize()]
@@ -228,10 +226,8 @@ func decryptGCM(key, cipherBytes []byte) (string, error) {
 
 	plainBytes, err := gcm.Open(nil, nonce, cipherBytes, nil)
 	if err != nil {
-		return hex.EncodeToString(nonce), err
+		return "", err
 	}
 
-	plainText := hex.EncodeToString(plainBytes)
-
-	return plainText, nil
+	return string(plainBytes), nil
 }
