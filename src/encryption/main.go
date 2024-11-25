@@ -18,9 +18,9 @@ type DHGenRes struct {
 }
 
 type DHKey struct {
-	Id      int    `json:"Id"`
-	PubKey  string `json:"PubKey"`
-	PrivKey string `json:"PrivKey"`
+	Id      int    `json:"id"`
+	PubKey  string `json:"pubKey"`
+	PrivKey string `json:"privKey"`
 }
 
 func main() {
