@@ -120,7 +120,7 @@ func decryptMsg(this js.Value, args []js.Value) interface{} {
 
 	plainText, err := decryptGCM(masterSecret, cipherBytes)
 	if err != nil {
-		result["error"] = err.Error()
+		result["error"] = plainText
 		return result
 	}
 
@@ -211,15 +211,15 @@ func decryptGCM(key, cipherBytes []byte) (string, error) {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", err
+		return "GCM 1", err
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return "", err
+		return "GCM 2", err
 	}
 	if len(cipherBytes) < gcm.NonceSize() {
-		return "", errors.New("Ciphertext too short")
+		return "GCM 3", errors.New("Ciphertext too short")
 	}
 
 	nonce := cipherBytes[:gcm.NonceSize()]
@@ -227,7 +227,7 @@ func decryptGCM(key, cipherBytes []byte) (string, error) {
 
 	plainBytes, err := gcm.Open(nil, nonce, cipherBytes, nil)
 	if err != nil {
-		return "", err
+		return "GCM 4", err
 	}
 
 	plainText := hex.EncodeToString(plainBytes)
