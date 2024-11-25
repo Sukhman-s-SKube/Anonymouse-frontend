@@ -7,9 +7,21 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"syscall/js"
 )
+
+type DHGenRes struct {
+	Err  string  `json:"err"`
+	Keys []DHKey `json:"keys"`
+}
+
+type DHKey struct {
+	Id      int    `json:"Id"`
+	PubKey  string `json:"PubKey"`
+	PrivKey string `json:"PrivKey"`
+}
 
 func main() {
 	done := make(chan struct{}, 0)
@@ -24,6 +36,7 @@ func main() {
 // Paramters (3): otherPubDH string, msg string, timestamp string
 func encryptMsg(this js.Value, args []js.Value) interface{} {
 	result := make(map[string]interface{})
+	result["error"] = ""
 
 	if len(args) < 3 {
 		result["error"] = "Invalid number of args"
@@ -66,6 +79,7 @@ func encryptMsg(this js.Value, args []js.Value) interface{} {
 // Paramters (4): otherPubDH string, myPrvDH string, cipherText string, timestamp string
 func decryptMsg(this js.Value, args []js.Value) interface{} {
 	result := make(map[string]interface{})
+	result["error"] = ""
 
 	if len(args) < 4 {
 		result["error"] = "Invalid number of args"
@@ -117,11 +131,12 @@ func decryptMsg(this js.Value, args []js.Value) interface{} {
 
 // Parameters (1): numKeys int
 func generateDHKeys(this js.Value, args []js.Value) interface{} {
-	result := make(map[string]interface{})
+	var result DHGenRes
 
 	if len(args) < 1 {
-		result["error"] = "Invalid number of args"
-		return result
+		result.Err = "Invalid number of args"
+		res, _ := json.Marshal(result)
+		return string(res)
 	}
 
 	numKeys := args[0].Int()
@@ -131,16 +146,20 @@ func generateDHKeys(this js.Value, args []js.Value) interface{} {
 	for i := 0; i < numKeys; i++ {
 		prvKey, err := crv.GenerateKey(rand.Reader)
 		if err != nil {
-			result["error"] = err.Error()
-			return result
+			result.Err = err.Error()
+			res, _ := json.Marshal(result)
+			return string(res)
 		}
 
 		pubKey := hex.EncodeToString(prvKey.PublicKey().Bytes())
 		prvKeyStr := hex.EncodeToString(prvKey.Bytes())
-		result[pubKey] = prvKeyStr
+		key := DHKey{i, pubKey, prvKeyStr}
+		result.Keys = append(result.Keys, key)
+		// result[strconv.Itoa(i)] = make(map[string]string)
 	}
 
-	return result
+	res, _ := json.Marshal(result)
+	return res
 }
 
 func generateMasterSecret(otherPubDHBytes, timestamp []byte, prvKey *ecdh.PrivateKey) ([]byte, string, error) {
