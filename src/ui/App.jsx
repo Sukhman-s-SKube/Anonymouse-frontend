@@ -5,6 +5,24 @@ import './wasm_exec.js';
 
 const apiroot = "http://localhost:8000/api";
 
+function generateDHKeys(numKeys) {// Parameters (1): numKeys int
+  return new Promise((resolve) => {
+    const res = window.generateDHKeys(numKeys);
+    resolve(res);
+  })
+}
+// function encryptMsg(otherPubDH, msg, timestamp) {// Paramters (3): otherPubDH string, msg string, timestamp string
+//   return new Promise((resolve) => {
+//     const res = window.encryptMsg(otherPubDH, msg, timestamp);
+//     resolve(res);
+//   })
+// }
+// function decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp) {// Paramters (4): otherPubDH string, myPrvDH string, cipherText string, timestamp string
+//   return new Promise((resolve) => {
+//     const res = window.decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp);
+//     resolve(res);
+//   })
+// }
 
 function test() {
   return new Promise((resolve) => {
@@ -20,6 +38,9 @@ function App() {
     username: '',
     password: '',
   });
+  const [chatrooms, setChatrooms] = useState([]);
+  const [chatroom, setChatroom] = useState('');
+  const [messages, setMessages] = useState([]);
 
   useEffect(() => {
     async function loadWasm() {
@@ -37,6 +58,24 @@ function App() {
     const t = await test();
   }
 
+  const registerDHKeys = async() =>{
+    const keys = await generateDHKeys(1);
+    document.getElementById("d1").innerHTML = typeof keys
+    // if(keys["error"] != null) {alert("GO error.");return;}
+    // axios
+    //   .put(`${apiroot}/user/dh_keys`,keys,{
+    //     headers: {
+    //         Authorization: sessionStorage.getItem("JWT"),
+    //     },
+    //   }
+    //   )
+    //   .then((response) => {
+    //     alert("Diffie-Hellman keys did updated successfully.")
+    //   })
+    //   .catch((err) => {
+    //     alert("Diffie-Hellman keys did NOT updated successfully.")
+    //   });
+  }
 
   const handleChange = (e) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
@@ -52,6 +91,7 @@ function App() {
         sessionStorage.setItem("JWT", response.data.token);
         
         setLoggedIn(true)
+        getChatrooms()
       })
       .catch((err) => {
         alert("Email or Password is incorrect.")
@@ -68,12 +108,28 @@ function App() {
       )
       .then((response) => {
         handleLogIn();
+        registerDHKeys()
       })
       .catch((err) => {
         alert("User already exists!")
         setLoggedIn(false);
       });
+
   };
+
+  const getChatrooms = (e)=>{
+    axios
+      .get(`${apiroot}/chatroom`, {
+        headers: {
+            Authorization: sessionStorage.getItem("JWT"),
+        },
+      }).then((response) => {
+          setChatrooms(response.data);
+      }).catch((err) => {
+          setTimeout(getChatrooms, 3000);
+      });
+    };
+    
 
 
 
@@ -82,7 +138,14 @@ function App() {
     return (
       <div className="home_page">
         <div className="sidebar">
-          <h1>side bar</h1>
+          {/* <h1>side bar</h1> */}
+          <div>
+              {chatrooms.length==0?'no chatrooms to show':chatrooms.map((chatroom) => (
+                  <div key={chatroom._id}>
+                      <button>{chatroom.name}</button>
+                  </div>
+              ))}
+          </div>
         </div>
         <div className="chatroom">
           <h1 id="d1">chatroom</h1>
@@ -93,7 +156,7 @@ function App() {
             </form>
           </div>
         </div>
-        <button onClick={()=>{setLoggedIn(false);}}>Log out</button>
+        <button onClick={()=>{setLoggedIn(false);chatrooms.length = 0;}}>Log out</button>
       </div>
     );
   }
@@ -138,10 +201,10 @@ function App() {
   if (toggleLoginRegister){
     return (
       <div className="login-container">
-        <h2 id="d1">Login</h2>
+        <h2 onClick={registerDHKeys} id="d1">Login</h2>
         <form onSubmit={handleLogIn}>
           <div>
-            <label>Username:</label><br />
+            <label onClick={getMessages}>Username:</label><br />
             <input
               type="text"
               name="username"
@@ -172,6 +235,7 @@ function App() {
       </div>
     );
   }
+  
 
   return <h1>You're Not Supposed To See This</h1>;
 }
