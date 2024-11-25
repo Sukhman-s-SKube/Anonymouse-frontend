@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"log"
 	"syscall/js"
 )
 
@@ -203,8 +204,9 @@ func encryptGCM(key, msg []byte) (string, error) {
 
 	cipherBytes := gcm.Seal(nil, nonce, msg, nil)
 	cipherText := hex.EncodeToString(cipherBytes)
+	log.Print(cipherText)
 
-	return cipherText, nil
+	return hex.EncodeToString(nonce), nil
 }
 
 func decryptGCM(key, cipherBytes []byte) (string, error) {
@@ -227,7 +229,7 @@ func decryptGCM(key, cipherBytes []byte) (string, error) {
 
 	plainBytes, err := gcm.Open(nil, nonce, cipherBytes, nil)
 	if err != nil {
-		return "GCM 4", err
+		return hex.EncodeToString(nonce), err
 	}
 
 	plainText := hex.EncodeToString(plainBytes)
