@@ -41,6 +41,11 @@ function App() {
   const [chatrooms, setChatrooms] = useState([]);
   const [chatroom, setChatroom] = useState('');
   const [messages, setMessages] = useState([]);
+  const [message, setMessage] = useState({
+    chatroom_id: '',
+    content: '',
+  });
+
 
   useEffect(() => {
     async function loadWasm() {
@@ -79,6 +84,11 @@ function App() {
 
   const handleChange = (e) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
+  };
+
+  const handleMessage = (e) => {
+    setMessage({'chatroom_id': chatroom, 'content':e.target.value});
+    document.getElementById('d1').innerHTML = message
   };
 
   const handleLogIn = (e) => {
@@ -131,7 +141,38 @@ function App() {
     };
     
 
+  const getMessages = (chatroomID) => (e)=>{
+    // setChatroom(chatroom._id)
+    axios
+      .get(`${apiroot}/message/${chatroomID}`, {
+        headers: {
+            Authorization: sessionStorage.getItem("JWT"),
+        },
+      }).then((response) => {
+          const currentChat = response.data
+          const prevChats = JSON.parse(localStorage.getItem(chatroomID))
+          var newChats = prevChats==null? currentChat:currentChat.filter((e) => prevChats.every((val) => val._id !== e._id));
+          var finalChats = prevChats==null? currentChat:prevChats.concat(newChats); 
+          setMessages(finalChats)
+          localStorage.setItem(chatroomID, JSON.stringify(finalChats))
+      }).catch((err) => {
+        setMessages([])
+      });
+      
+  };
 
+  const sendMessage = (e) =>{
+    document.getElementById("d1").innerHTML = e.target.value
+    // axios
+    //   .post(`${apiroot}/message`, { "chatroom_id": "6739517e67a338a367967ee3",
+    //     "content": e.target.value}, {
+    //     headers: {
+    //         Authorization: sessionStorage.getItem("JWT"),
+    //     },
+    //   }).then((response) => {
+    //   }).catch((err) => {
+    //   });
+  };
 
   if (!loggedIn)localStorage.clear();
   if (loggedIn) {
@@ -142,7 +183,7 @@ function App() {
           <div>
               {chatrooms.length==0?'no chatrooms to show':chatrooms.map((chatroom) => (
                   <div key={chatroom._id}>
-                      <button>{chatroom.name}</button>
+                      <button onClick={getMessages(chatroom._id)}>{chatroom.name}</button>
                   </div>
               ))}
           </div>
@@ -150,8 +191,15 @@ function App() {
         <div className="chatroom">
           <h1 id="d1">chatroom</h1>
           <div>
-            <form >
-              <input type="text" name="message" required/>
+              {messages.length==0?'no chats to show':messages.map((message) => (
+                  <div key={message._id}>
+                    <p>{message.sender}: {message.content}</p>
+                  </div>
+              ))}
+          </div>
+          <div>
+            <form onSubmit={sendMessage}>
+              <input type="text" name="message" onChange={handleMessage} required/>
               <button type="submit">Send</button>
             </form>
           </div>
