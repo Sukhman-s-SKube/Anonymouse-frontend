@@ -159,7 +159,7 @@ func generateDHKeys(this js.Value, args []js.Value) interface{} {
 	}
 
 	res, _ := json.Marshal(result)
-	return res
+	return string(res)
 }
 
 func generateMasterSecret(otherPubDHBytes, timestamp []byte, prvKey *ecdh.PrivateKey) ([]byte, string, error) {
