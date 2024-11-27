@@ -6,7 +6,9 @@ app.on('ready', () => {
     const win = new BrowserWindow({
         width: 800,
         height: 600,
-        webPreferences: {}
+        webPreferences: {
+            preload: path.join(app.getAppPath(), isDev ? '.' : '..', '/electron/preload.cjs')
+        }
     });
 
     if (isDev) win.loadURL('http://localhost:3000');

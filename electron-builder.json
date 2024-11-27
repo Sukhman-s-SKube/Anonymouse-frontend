@@ -2,12 +2,8 @@
     "appId": "com.anonymouse",
     "productName": "AnonyMouse",
     "icon": "src/ui/assets/mouse.png",
-    "files": [
-      "dist-react/**/*",
-      "node_modules/**/*",
-      "package.json",
-      "src/electron/main.js"
-    ],
+    "files": ["dist-react", "electron"],
+    "extraResources": ["electron/preload.cjs"],
     "mac": {
         "target": "dmg"
     },
