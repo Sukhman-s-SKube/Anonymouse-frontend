@@ -11,25 +11,20 @@ function generateDHKeys(numKeys) {// Parameters (1): numKeys int
     resolve(res);
   })
 }
-// function encryptMsg(otherPubDH, msg, timestamp) {// Paramters (3): otherPubDH string, msg string, timestamp string
-//   return new Promise((resolve) => {
-//     const res = window.encryptMsg(otherPubDH, msg, timestamp);
-//     resolve(res);
-//   })
-// }
-// function decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp) {// Paramters (4): otherPubDH string, myPrvDH string, cipherText string, timestamp string
-//   return new Promise((resolve) => {
-//     const res = window.decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp);
-//     resolve(res);
-//   })
-// }
-
-function test() {
+function encryptMsg(otherPubDH, msg, timestamp) {// Paramters (3): otherPubDH string, msg string, timestamp string
   return new Promise((resolve) => {
-    const res = window.test();
+    const res = window.encryptMsg(otherPubDH, msg, timestamp);
     resolve(res);
   })
 }
+function decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp) {// Paramters (4): otherPubDH string, myPrvDH string, cipherText string, timestamp string
+  return new Promise((resolve) => {
+    const res = window.decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp);
+    resolve(res);
+  })
+}
+
+
 function App() {
   const [isWasmLoaded, setIsWasmLoaded] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
@@ -39,7 +34,7 @@ function App() {
     password: '',
   });
   const [chatrooms, setChatrooms] = useState([]);
-  const [chatroom, setChatroom] = useState('');
+  const [chatroomId, setChatroomId] = useState('');
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState({
     chatroom_id: '',
@@ -59,13 +54,20 @@ function App() {
     loadWasm();
   }, []);
 
-  const handleWASM = async () => {
-    const t = await test();
-  }
-
   const registerDHKeys = async() =>{
-    const keys = await generateDHKeys(1);
-    document.getElementById("d1").innerHTML = typeof keys
+    const keys = await generateDHKeys(100);
+    const tK = JSON.parse(keys)
+    
+    const date = new Date()
+    const enc = await encryptMsg(tK.keys[0].pubKey, 'hello', date.toJSON());
+
+
+    const dec = await decryptMsg(enc.pubKey, tK.keys[0].privKey,
+                                 enc.cipherText, date.toJSON());
+    console.log(enc)
+    console.log(dec)
+    document.getElementById("d1").innerHTML = typeof dec
+
     // if(keys["error"] != null) {alert("GO error.");return;}
     // axios
     //   .put(`${apiroot}/user/dh_keys`,keys,{
@@ -87,7 +89,7 @@ function App() {
   };
 
   const handleMessage = (e) => {
-    setMessage({'chatroom_id': chatroom, 'content':e.target.value});
+    setMessage({'chatroom_id': chatroomId, 'content':e.target.value});
     document.getElementById('d1').innerHTML = message
   };
 
@@ -142,7 +144,7 @@ function App() {
     
 
   const getMessages = (chatroomID) => (e)=>{
-    // setChatroom(chatroom._id)
+    setChatroomId(chatroomID)
     axios
       .get(`${apiroot}/message/${chatroomID}`, {
         headers: {
@@ -151,8 +153,8 @@ function App() {
       }).then((response) => {
           const currentChat = response.data
           const prevChats = JSON.parse(localStorage.getItem(chatroomID))
-          var newChats = prevChats==null? currentChat:currentChat.filter((e) => prevChats.every((val) => val._id !== e._id));
-          var finalChats = prevChats==null? currentChat:prevChats.concat(newChats); 
+          let newChats = prevChats==null? currentChat:currentChat.filter((e) => prevChats.every((val) => val._id !== e._id));
+          let finalChats = prevChats==null? currentChat:prevChats.concat(newChats); 
           setMessages(finalChats)
           localStorage.setItem(chatroomID, JSON.stringify(finalChats))
       }).catch((err) => {
@@ -174,7 +176,7 @@ function App() {
     //   });
   };
 
-  if (!loggedIn)localStorage.clear();
+  
   if (loggedIn) {
     return (
       <div className="home_page">
@@ -199,7 +201,7 @@ function App() {
           </div>
           <div>
             <form onSubmit={sendMessage}>
-              <input type="text" name="message" onChange={handleMessage} required/>
+              <input type="text" name="message" value={message.content} onChange={handleMessage} required/>
               <button type="submit">Send</button>
             </form>
           </div>
@@ -209,11 +211,49 @@ function App() {
     );
   }
 
-  if (!toggleLoginRegister){
+  // if (!toggleLoginRegister){
+  //   return (
+  //     <div className="login-container">
+  //       <h2 id="d1">Register</h2>
+  //       <form onSubmit={handleRegisteration}>
+  //         <div>
+  //           <label>Username:</label><br />
+  //           <input
+  //             type="text"
+  //             name="username"
+  //             value={credentials.username}
+  //             onChange={handleChange}
+  //             required
+  //           />
+  //         </div>
+  //         <div>
+  //           <label>Password:</label><br />
+  //           <input
+  //             type="password"
+  //             name="password"
+  //             value={credentials.password}
+  //             onChange={handleChange}
+  //             required
+  //           />
+  //         </div>
+  //         <button type="submit">Register</button>
+  //         <div className="bttn_group_wrapper">
+  //           <div className="bttn_group">
+  //             <a href="#" className="bttn_two" id="hover" onClick={() => {setToggleLoginRegister(false);}}><span>New?<br/>Register Here</span><div className="bttn_bg"></div></a>
+  //             <a href="#" className="bttn_one" onClick={() => {setToggleLoginRegister(true);}}>Have an account?<br/>Log in here</a>
+  //           </div>
+  //         </div>
+  //       </form>
+  //     </div>
+  //   );
+  // }
+
+  if (!loggedIn){
+    localStorage.clear();
     return (
       <div className="login-container">
-        <h2 id="d1">Register</h2>
-        <form onSubmit={handleRegisteration}>
+        <h2 onClick={registerDHKeys} id="d1">{toggleLoginRegister?'Login':'Register'}</h2>
+        <form onSubmit={toggleLoginRegister?handleLogIn:handleRegisteration}>
           <div>
             <label>Username:</label><br />
             <input
@@ -234,44 +274,7 @@ function App() {
               required
             />
           </div>
-          <button type="submit">Register</button>
-          <div className="bttn_group_wrapper">
-            <div className="bttn_group">
-              <a href="#" className="bttn_two" id="hover" onClick={() => {setToggleLoginRegister(false);}}><span>New?<br/>Register Here</span><div className="bttn_bg"></div></a>
-              <a href="#" className="bttn_one" onClick={() => {setToggleLoginRegister(true);}}>Have an account?<br/>Log in here</a>
-            </div>
-          </div>
-        </form>
-      </div>
-    );
-  }
-
-  if (toggleLoginRegister){
-    return (
-      <div className="login-container">
-        <h2 onClick={registerDHKeys} id="d1">Login</h2>
-        <form onSubmit={handleLogIn}>
-          <div>
-            <label onClick={getMessages}>Username:</label><br />
-            <input
-              type="text"
-              name="username"
-              value={credentials.username}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div>
-            <label>Password:</label><br />
-            <input
-              type="password"
-              name="password"
-              value={credentials.password}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <button type="submit">Login</button>
+          <button type="submit">{toggleLoginRegister?'Login':'Register'}</button>
           <div className="bttn_group_wrapper">
             <div className="bttn_group">
               <a href="#" className="bttn_two" id="hover" onClick={() => {setToggleLoginRegister(false);}}><span>New?<br/>Register Here</span><div className="bttn_bg"></div></a>
@@ -282,10 +285,9 @@ function App() {
         </form>
       </div>
     );
-  }
+  };
   
-
-  return <h1>You're Not Supposed To See This</h1>;
+  return (<h1>You're Not Suppose To See This</h1>);
 }
 
 export default App;
