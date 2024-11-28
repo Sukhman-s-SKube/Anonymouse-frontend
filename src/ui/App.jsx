@@ -5,19 +5,19 @@ import './wasm_exec.js';
 
 const apiroot = "http://localhost:8000/api";
 
-function generateDHKeys(numKeys) {// Parameters (1): numKeys int
+async function generateDHKeys(numKeys) {// Parameters (1): numKeys int
   return new Promise((resolve) => {
     const res = window.generateDHKeys(numKeys);
     resolve(res);
   })
 }
-function encryptMsg(otherPubDH, msg, timestamp) {// Paramters (3): otherPubDH string, msg string, timestamp string
+async function encryptMsg(otherPubDH, msg, timestamp) {// Paramters (3): otherPubDH string, msg string, timestamp string
   return new Promise((resolve) => {
     const res = window.encryptMsg(otherPubDH, msg, timestamp);
     resolve(res);
   })
 }
-function decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp) {// Paramters (4): otherPubDH string, myPrvDH string, cipherText string, timestamp string
+async function decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp) {// Paramters (4): otherPubDH string, myPrvDH string, cipherText string, timestamp string
   return new Promise((resolve) => {
     const res = window.decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp);
     resolve(res);
@@ -36,10 +36,7 @@ function App() {
   const [chatrooms, setChatrooms] = useState([]);
   const [chatroomId, setChatroomId] = useState('');
   const [messages, setMessages] = useState([]);
-  const [message, setMessage] = useState({
-    chatroom_id: '',
-    content: '',
-  });
+  const [message, setMessage] = useState('');
 
 
   useEffect(() => {
@@ -89,8 +86,7 @@ function App() {
   };
 
   const handleMessage = (e) => {
-    setMessage({'chatroom_id': chatroomId, 'content':e.target.value});
-    document.getElementById('d1').innerHTML = message
+    setMessage(e.target.value);
   };
 
   const handleLogIn = (e) => {
@@ -119,12 +115,14 @@ function App() {
         credentials
       )
       .then((response) => {
-        handleLogIn();
         registerDHKeys()
       })
       .catch((err) => {
         alert("User already exists!")
         setLoggedIn(false);
+      })
+      .finally(() => {
+        handleLogIn(e)
       });
 
   };
@@ -138,7 +136,7 @@ function App() {
       }).then((response) => {
           setChatrooms(response.data);
       }).catch((err) => {
-          setTimeout(getChatrooms, 3000);
+          // setTimeout(getChatrooms, 3000);
       });
     };
     
@@ -164,16 +162,22 @@ function App() {
   };
 
   const sendMessage = (e) =>{
-    document.getElementById("d1").innerHTML = e.target.value
-    // axios
-    //   .post(`${apiroot}/message`, { "chatroom_id": "6739517e67a338a367967ee3",
-    //     "content": e.target.value}, {
-    //     headers: {
-    //         Authorization: sessionStorage.getItem("JWT"),
-    //     },
-    //   }).then((response) => {
-    //   }).catch((err) => {
-    //   });
+    e.preventDefault();
+    axios
+      .post(`${apiroot}/message`, {
+        chatroom_id: chatroomId,
+        content: message,
+      }, {
+        headers: {
+            Authorization: sessionStorage.getItem("JWT"),
+        },
+      }).then((response) => {
+        const prevChats = JSON.parse(localStorage.getItem(chatroomId))
+        let newMessage = prevChats==null?[response.data]:prevChats.concat([response.data])
+        setMessages(newMessage)
+        localStorage.setItem(chatroomId, JSON.stringify(newMessage))
+      }).catch((err) => {
+      });
   };
 
   
@@ -191,62 +195,27 @@ function App() {
           </div>
         </div>
         <div className="chatroom">
-          <h1 id="d1">chatroom</h1>
+          <h1  id="d1">chatroom</h1>
           <div>
-              {messages.length==0?'no chats to show':messages.map((message) => (
-                  <div key={message._id}>
-                    <p>{message.sender}: {message.content}</p>
-                  </div>
-              ))}
-          </div>
-          <div>
-            <form onSubmit={sendMessage}>
-              <input type="text" name="message" value={message.content} onChange={handleMessage} required/>
-              <button type="submit">Send</button>
-            </form>
+            {messages.length==0?'no chats to show':messages.map((msg) => (
+                <div key={msg._id}>
+                  <p>{msg.sender}: {msg.content}</p>
+                </div>
+            ))}
+            <div>
+              {chatroomId==''?<div></div>:
+              <form onSubmit={sendMessage}>
+                <input type="text" name="message" value={message} onChange={handleMessage} required/>
+                <button type="submit">Send</button>
+              </form>
+              }
+            </div>
           </div>
         </div>
         <button onClick={()=>{setLoggedIn(false);chatrooms.length = 0;}}>Log out</button>
       </div>
     );
   }
-
-  // if (!toggleLoginRegister){
-  //   return (
-  //     <div className="login-container">
-  //       <h2 id="d1">Register</h2>
-  //       <form onSubmit={handleRegisteration}>
-  //         <div>
-  //           <label>Username:</label><br />
-  //           <input
-  //             type="text"
-  //             name="username"
-  //             value={credentials.username}
-  //             onChange={handleChange}
-  //             required
-  //           />
-  //         </div>
-  //         <div>
-  //           <label>Password:</label><br />
-  //           <input
-  //             type="password"
-  //             name="password"
-  //             value={credentials.password}
-  //             onChange={handleChange}
-  //             required
-  //           />
-  //         </div>
-  //         <button type="submit">Register</button>
-  //         <div className="bttn_group_wrapper">
-  //           <div className="bttn_group">
-  //             <a href="#" className="bttn_two" id="hover" onClick={() => {setToggleLoginRegister(false);}}><span>New?<br/>Register Here</span><div className="bttn_bg"></div></a>
-  //             <a href="#" className="bttn_one" onClick={() => {setToggleLoginRegister(true);}}>Have an account?<br/>Log in here</a>
-  //           </div>
-  //         </div>
-  //       </form>
-  //     </div>
-  //   );
-  // }
 
   if (!loggedIn){
     localStorage.clear();
