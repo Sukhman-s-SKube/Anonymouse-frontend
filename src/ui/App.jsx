@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from "axios";
 import './App.css';
 import './wasm_exec.js';
@@ -26,12 +26,14 @@ async function decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp) {// Paramt
 
 
 function App() {
+  
   const [isWasmLoaded, setIsWasmLoaded] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [toggleLoginRegister, setToggleLoginRegister] = useState(true);
   const [credentials, setCredentials] = useState({
     username: '',
     password: '',
+    _id: '',
   });
   const [chatrooms, setChatrooms] = useState([]);
   const [chatroomId, setChatroomId] = useState('');
@@ -88,6 +90,18 @@ function App() {
   const handleMessage = (e) => {
     setMessage(e.target.value);
   };
+  
+  function parseJwt(token) {
+    const base64Url = token.split('.')[1]; // Get the payload part of the token
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  }
 
   const handleLogIn = (e) => {
     e.preventDefault();
@@ -96,8 +110,15 @@ function App() {
         credentials
       )
       .then((response) => {
-        sessionStorage.setItem("JWT", response.data.token);
-        
+        const token = response.data.token;
+        sessionStorage.setItem("JWT", token);
+        // Decode the token to extract the user ID
+        const decodedToken = parseJwt(token);
+        const userId = decodedToken.user_id; // Extract user_id
+        setCredentials({
+          ...credentials,
+          _id: userId,
+        });
         setLoggedIn(true)
         getChatrooms()
       })
@@ -161,6 +182,8 @@ function App() {
       
   };
 
+
+  const messageInputRef = useRef(null);
   const sendMessage = (e) =>{
     e.preventDefault();
     axios
@@ -176,6 +199,8 @@ function App() {
         let newMessage = prevChats==null?[response.data]:prevChats.concat([response.data])
         setMessages(newMessage)
         localStorage.setItem(chatroomId, JSON.stringify(newMessage))
+        setMessage('');
+        messageInputRef.current.focus(); // Keep the input focused
       }).catch((err) => {
         alert("Message Failed To Send")
       });
@@ -186,7 +211,7 @@ function App() {
     return (
       <div className="home_page">
         <div className="sidebar">
-          <h3>Welcome {credentials.username}</h3>
+          <h3>Welcome, {credentials.username}</h3>
           <div>
               {chatrooms.length==0?'no chatrooms to show':chatrooms.map((chatroom) => (
                   <div key={chatroom._id}>
@@ -196,24 +221,42 @@ function App() {
           </div>
         </div>
         <div className="chatroom">
-          <h1  id="d1">chatroom</h1>
-          <div>
-            {messages.length==0?'no chats to show':messages.map((msg) => (
-                <div key={msg._id}>
-                  <p>{msg.sender}: {msg.content}</p>
+          <h1 id="d1">Chatroom</h1>
+          
+          <div className="messages-container">
+            {messages.length === 0 ? (
+              'No chats to show'
+            ) : (
+              messages.map((msg) => (
+                <div
+                  key={msg._id}
+                  className={`message ${
+                    msg.sender === credentials._id ? 'sender' : 'receiver'
+                  }`}
+                >
+                  <div className="bubble">
+                    <p>{msg.content}</p>
+                  </div>
                 </div>
-            ))}
-            <div>
-              {chatroomId==''?<div></div>:
-              <form onSubmit={sendMessage}>
-                <input type="text" name="message" value={message} onChange={handleMessage} required/>
-                <button type="submit">Send</button>
-              </form>
-              }
-            </div>
+              ))
+            )}
           </div>
+
+          {chatroomId !== '' && (
+            <form className="message-form" onSubmit={sendMessage}>
+              <input
+                type="text"
+                name="message"
+                value={message}
+                onChange={handleMessage}
+                required
+                ref={messageInputRef}
+              />
+              <button type="submit">Send</button>
+            </form>
+          )}
         </div>
-        <button onClick={()=>{setLoggedIn(false);chatrooms.length = 0;}}>Log out</button>
+        <button className="logout-button" onClick={()=>{setLoggedIn(false);chatrooms.length = 0;}}>Log out</button>
       </div>
     );
   }
