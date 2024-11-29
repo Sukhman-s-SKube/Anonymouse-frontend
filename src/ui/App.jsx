@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from "axios";
-import './App.css'; // Make sure to create this file
+import './App.css';
 import './wasm_exec.js';
 
 const apiroot = "http://localhost:8000/api";
@@ -177,6 +177,7 @@ function App() {
         setMessages(newMessage)
         localStorage.setItem(chatroomId, JSON.stringify(newMessage))
       }).catch((err) => {
+        alert("Message Failed To Send")
       });
   };
 
@@ -185,7 +186,7 @@ function App() {
     return (
       <div className="home_page">
         <div className="sidebar">
-          {/* <h1>side bar</h1> */}
+          <h3>Welcome {credentials.username}</h3>
           <div>
               {chatrooms.length==0?'no chatrooms to show':chatrooms.map((chatroom) => (
                   <div key={chatroom._id}>
