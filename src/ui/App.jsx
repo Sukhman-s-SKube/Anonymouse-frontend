@@ -129,6 +129,27 @@ function App() {
 
   };
 
+
+  const handleLogout = () => {
+  // Clear all relevant states
+  setChatroomId('');
+  setMessages([]);
+  setMessage('');
+  setCredentials({
+    username: '',
+    password: '',
+    _id: '',
+  });
+
+  // Clear local and session storage
+  localStorage.clear();
+  sessionStorage.clear();
+
+  // Reset logged-in status
+  setLoggedIn(false);
+  };
+
+
   const handleRegisteration = (e) => {
     e.preventDefault();
     axios
@@ -176,16 +197,24 @@ function App() {
           let finalChats = prevChats==null? currentChat:prevChats.concat(newChats); 
           setMessages(finalChats)
           localStorage.setItem(chatroomID, JSON.stringify(finalChats))
+          setTimeout(scrollToBottom, 10);
       }).catch((err) => {
         setMessages([])
       });
       
   };
 
-
+  const messagesEndRef = useRef(null); 
   const messageInputRef = useRef(null);
+  const scrollToBottom = () => {
+    console.log("Scrolling to bottom");
+    messagesEndRef.current?.scrollIntoView({ behaviour: 'smooth'});
+  };
+
   const sendMessage = (e) =>{
     e.preventDefault();
+    if (!message.trim()) return; // no empty messages
+
     axios
       .post(`${apiroot}/message`, {
         chatroom_id: chatroomId,
@@ -200,6 +229,7 @@ function App() {
         setMessages(newMessage)
         localStorage.setItem(chatroomId, JSON.stringify(newMessage))
         setMessage('');
+        setTimeout(scrollToBottom, 10); 
         messageInputRef.current.focus(); // Keep the input focused
       }).catch((err) => {
         alert("Message Failed To Send")
@@ -240,6 +270,7 @@ function App() {
                 </div>
               ))
             )}
+            <div ref={messagesEndRef}></div>
           </div>
 
           {chatroomId !== '' && (
@@ -256,7 +287,7 @@ function App() {
             </form>
           )}
         </div>
-        <button className="logout-button" onClick={()=>{setLoggedIn(false);chatrooms.length = 0;}}>Log out</button>
+        <button className="logout-button" onClick={handleLogout}>Log out</button>
       </div>
     );
   }
