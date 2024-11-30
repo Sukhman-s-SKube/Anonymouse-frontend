@@ -13,6 +13,9 @@
 /dist
 /dist-react
 
+# local DB files
+*.db
+
 # misc
 .vscode
 .DS_Store

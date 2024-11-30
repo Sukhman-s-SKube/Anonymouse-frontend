@@ -1,6 +1,10 @@
-const electron = require('electron');
+const { ipcRenderer, contextBridge } = require('electron');
 
-electron.contextBridge.exposeInMainWorld('electron', {
-    getTest: () => console.log("testing brudge"),
+contextBridge.exposeInMainWorld('electron', {
+    createDB: () => ipcRenderer.invoke("createDB"),
+    createDHTable: () => ipcRenderer.invoke("createDHTable"),
+    insertDHKeys: (keys) => ipcRenderer.invoke("insertDHKeys", keys),
+    getDHKey: (id) => ipcRenderer.invoke("getDHKey", id),
+    delDHKey: (id) => ipcRenderer.invoke("delDHKey", id),
+    delAllDHKeys: () => ipcRenderer.invoke("delAllDHKeys"),
 });
-
