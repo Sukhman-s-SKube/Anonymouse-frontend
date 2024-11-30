@@ -50,34 +50,57 @@ function App() {
     loadWasm();
   }, []);
 
-  const registerDHKeys = async() =>{
-    const keys = await generateDHKeys(100);
-    const tK = JSON.parse(keys)
+  const createDB = async() =>{
+    await window.electron.createDB()
+    console.log('DB created')
+  };
+  const createDHTable = async() =>{
+    await window.electron.createDHTable()
+    console.log('DH Key Table created')
+  };
+  
+  const genAndStoreDHKeys = async() =>{
+    await window.electron.delAllDHKeys() // for testing purposes, DO NOT keep this here, fix the issue
+
+    const genDHKeys = await generateDHKeys(100);
+    const DH = JSON.parse(genDHKeys)
+    if(DH.error !== undefined) 
+      return await window.electron.alert('GO DH keys error: ', DH.error);
     
-    const date = new Date()
-    const enc = await encryptMsg(tK.keys[0].pubKey, 'hello', date.toJSON());
+    await window.electron.insertDHKeys(DH.keys)
+    console.log('DH Keys stored')
+    
+    console.log(DH.keys)
+    for(let key of DH.keys){
+      delete key.privKey
+    }
+    console.log('DH priv Keys removed')
+    console.log(DH.keys)
+    
+    axios
+      .put(`${apiroot}/user/dh_keys`,DH.keys,{
+        headers: {
+            Authorization: sessionStorage.getItem("JWT"),
+        },
+      }
+      )
+      .then((response) => {
+        console.log("Diffie-Hellman keys updated successfully.")
+      })
+      .catch((err) => {
+        console.log("Diffie-Hellman keys NOT updated successfully.")
+      });
 
 
-    const dec = await decryptMsg(enc.pubKey, tK.keys[0].privKey,
-                                 enc.cipherText, date.toJSON());
-    console.log(enc)
-    console.log(dec)
-    document.getElementById("d1").innerHTML = typeof dec
+    // const date = new Date()
+    // const enc = await encryptMsg(tK.keys[0].pubKey, 'hello', date.toJSON());
 
-    // if(keys["error"] != null) {alert("GO error.");return;}
-    // axios
-    //   .put(`${apiroot}/user/dh_keys`,keys,{
-    //     headers: {
-    //         Authorization: sessionStorage.getItem("JWT"),
-    //     },
-    //   }
-    //   )
-    //   .then((response) => {
-    //     alert("Diffie-Hellman keys did updated successfully.")
-    //   })
-    //   .catch((err) => {
-    //     alert("Diffie-Hellman keys did NOT updated successfully.")
-    //   });
+
+    // const dec = await decryptMsg(enc.pubKey, tK.keys[0].privKey,
+    //                              enc.cipherText, date.toJSON());
+    // console.log(enc)
+    // console.log(dec)
+    // document.getElementById("d1").innerHTML = typeof dec
   }
 
   const handleChange = (e) => {
@@ -98,10 +121,11 @@ function App() {
         sessionStorage.setItem("JWT", response.data.token);
         
         setLoggedIn(true)
+        genAndStoreDHKeys()
         getChatrooms()
       })
       .catch((err) => {
-        alert("Email or Password is incorrect.")
+        window.electron.alert("Email or Password is incorrect.")
         setLoggedIn(false);
       });
 
@@ -114,10 +138,11 @@ function App() {
         credentials
       )
       .then((response) => {
-        registerDHKeys()
+        createDB()
+        createDHTable()
       })
       .catch((err) => {
-        alert("User already exists!")
+        window.electron.alert("User already exists!")
         setLoggedIn(false);
       })
       .finally(() => {
@@ -176,7 +201,7 @@ function App() {
         setMessages(newMessage)
         localStorage.setItem(chatroomId, JSON.stringify(newMessage))
       }).catch((err) => {
-        alert("Message Failed To Send")
+        window.electron.alert("Message Failed To Send")
       });
   };
 
@@ -221,7 +246,8 @@ function App() {
     localStorage.clear();
     return (
       <div className="login-container">
-        <h2 onClick={registerDHKeys} id="d1">{toggleLoginRegister?'Login':'Register'}</h2>
+        <button onClick={()=>{createDB();createDHTable();}}>Create db + table</button>
+        <h2 onClick={genAndStoreDHKeys} id="d1">{toggleLoginRegister?'Login':'Register'}</h2>
         <form onSubmit={toggleLoginRegister?handleLogIn:handleRegisteration}>
           <div>
             <label>Username:</label><br />
