@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld('electron', {
     getDHKey: (id) => ipcRenderer.invoke("getDHKey", id),
     delDHKey: (id) => ipcRenderer.invoke("delDHKey", id),
     delAllDHKeys: () => ipcRenderer.invoke("delAllDHKeys"),
+    alert: (msg) => ipcRenderer.send("alert", msg)
 });

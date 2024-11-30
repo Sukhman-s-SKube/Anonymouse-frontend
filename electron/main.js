@@ -1,7 +1,9 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'path'; 
 import isDev from 'electron-is-dev';
 import database from 'better-sqlite3-multiple-ciphers';
+
+let mainWin
 
 app.on('ready', () => {
     const win = new BrowserWindow({
@@ -23,7 +25,7 @@ app.on('window-all-closed', () => {
 });
   
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) mainWin = createWindow();
 });
 
 ipcMain.handle("createDB", async (event, args) => {
@@ -52,7 +54,7 @@ ipcMain.handle("createDHTable", async (event, args) => {
 ipcMain.handle("insertDHKeys", async (event, args) => {
     const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
     // db.pragma(`key='${args[0]}'`);
-    const keys = args[0];
+    const keys = args;
 
     for (let key in keys) {
         const insertData = db.prepare("INSERT INTO dh_keys (id, pub, priv) VALUES (?, ?, ?)").run(key.id, key.pubKey, key.privKey);
@@ -63,7 +65,7 @@ ipcMain.handle("insertDHKeys", async (event, args) => {
 ipcMain.handle("getDHKey", async (event, args) => {
     const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
     // db.pragma(`key='${args[0]}'`);
-    const row = db.prepare("SELECT * FROM dh_keys WHERE id = ?").get(args[0]);
+    const row = db.prepare("SELECT * FROM dh_keys WHERE id = ?").get(args);
     db.close();
     return row
 });
@@ -71,7 +73,7 @@ ipcMain.handle("getDHKey", async (event, args) => {
 ipcMain.handle("delDHKey", async (event, args) => {
     const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
     // db.pragma(`key='${args[0]}'`);
-    const delData = db.prepare("DELETE FROM dh_keys WHERE id = ?").run(args[0]);
+    const delData = db.prepare("DELETE FROM dh_keys WHERE id = ?").run(args);
     db.close();
 });
 
@@ -80,4 +82,14 @@ ipcMain.handle("delAllDHKeys", async (event, args) => {
     // db.pragma(`key='${args[0]}'`);
     const delData = db.prepare("DELETE FROM dh_keys").run();
     db.close();
+});
+
+ipcMain.on("alert", (event, args) => {
+    const options = {
+        type: "none",
+        buttons: ["Okay"],
+        title: "Alert Message!",
+        message: args,
+    }
+    dialog.showMessageBox(mainWin, options)
 });

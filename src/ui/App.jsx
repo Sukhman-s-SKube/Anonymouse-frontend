@@ -24,7 +24,6 @@ async function decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp) {// Paramt
   })
 }
 
-
 function App() {
   const [isWasmLoaded, setIsWasmLoaded] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
