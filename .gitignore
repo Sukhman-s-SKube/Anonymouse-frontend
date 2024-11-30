@@ -14,7 +14,7 @@
 /dist-react
 
 # local DB files
-*.db
+*.db*
 
 # misc
 .vscode

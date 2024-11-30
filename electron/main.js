@@ -42,9 +42,9 @@ ipcMain.handle("createDHTable", async (event, args) => {
     const query = `
         CREATE TABLE dh_keys (
             id INTEGER PRIMARY KEY,
-            pubKey STRING NOT NULL,
-            privKey STRING NOT NULL
-        )`
+            privKey STRING NOT NULL,
+            pubKey STRING NOT NULL
+            )`
     ;
     db.exec(query);
     db.close();
@@ -56,8 +56,8 @@ ipcMain.handle("insertDHKeys", async (event, args) => {
     // db.pragma(`key='${args[0]}'`);
     const keys = args;
 
-    for (let key in keys) {
-        const insertData = db.prepare("INSERT INTO dh_keys (id, pub, priv) VALUES (?, ?, ?)").run(key.id, key.pubKey, key.privKey);
+    for (let key of keys) {
+        const insertData = db.prepare("INSERT INTO dh_keys (id, privKey, pubKey) VALUES (?, ?, ?)").run(key.id, key.privKey, key.pubKey);
     }
     db.close();
 });
