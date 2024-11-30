@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from "axios";
+import { Toaster, toast } from 'sonner';
+
 import './App.css';
 import './wasm_exec.js';
 
@@ -101,7 +103,7 @@ function App() {
         getChatrooms()
       })
       .catch((err) => {
-        alert("Email or Password is incorrect.")
+        toast.error('Email or Password is incorrect.')
         setLoggedIn(false);
       });
 
@@ -114,16 +116,14 @@ function App() {
         credentials
       )
       .then((response) => {
-        registerDHKeys()
+        registerDHKeys();
+        handleLogIn(e);
       })
       .catch((err) => {
-        alert("User already exists!")
+        toast.error("User already exists!")
         setLoggedIn(false);
-      })
-      .finally(() => {
-        handleLogIn(e)
+        return;
       });
-
   };
 
   const getChatrooms = (e)=>{
@@ -176,7 +176,7 @@ function App() {
         setMessages(newMessage)
         localStorage.setItem(chatroomId, JSON.stringify(newMessage))
       }).catch((err) => {
-        alert("Message Failed To Send")
+        toast.error("Message Failed To Send")
       });
   };
 
@@ -184,6 +184,7 @@ function App() {
   if (loggedIn) {
     return (
       <div className="home_page">
+        <Toaster position='top-center' richColors />
         <div className="sidebar">
           <h3>Welcome {credentials.username}</h3>
           <div>
@@ -221,6 +222,7 @@ function App() {
     localStorage.clear();
     return (
       <div className="login-container">
+        <Toaster position='top-center' richColors />
         <h2 onClick={registerDHKeys} id="d1">{toggleLoginRegister?'Login':'Register'}</h2>
         <form onSubmit={toggleLoginRegister?handleLogIn:handleRegisteration}>
           <div>
