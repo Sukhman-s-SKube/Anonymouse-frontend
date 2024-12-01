@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from "axios";
 import { Toaster, toast } from 'sonner';
 
@@ -27,12 +27,14 @@ async function decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp) {// Paramt
 }
 
 function App() {
+  
   const [isWasmLoaded, setIsWasmLoaded] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [toggleLoginRegister, setToggleLoginRegister] = useState(true);
   const [credentials, setCredentials] = useState({
     username: '',
     password: '',
+    _id: '',
   });
   const [chatrooms, setChatrooms] = useState([]);
   const [chatroomId, setChatroomId] = useState('');
@@ -112,6 +114,18 @@ function App() {
   const handleMessage = (e) => {
     setMessage(e.target.value);
   };
+  
+  function parseJwt(token) {
+    const base64Url = token.split('.')[1]; // Get the payload part of the token
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  }
 
   const handleLogIn = (e) => {
     e.preventDefault();
@@ -120,8 +134,15 @@ function App() {
         credentials
       )
       .then((response) => {
-        sessionStorage.setItem("JWT", response.data.token);
-        
+        const token = response.data.token;
+        sessionStorage.setItem("JWT", token);
+        // Decode the token to extract the user ID
+        const decodedToken = parseJwt(token);
+        const userId = decodedToken.user_id; // Extract user_id
+        setCredentials({
+          ...credentials,
+          _id: userId,
+        });
         setLoggedIn(true)
         genAndStoreDHKeys()
         getChatrooms()
@@ -132,6 +153,27 @@ function App() {
       });
 
   };
+
+
+  const handleLogout = () => {
+  // Clear all relevant states
+  setChatroomId('');
+  setMessages([]);
+  setMessage('');
+  setCredentials({
+    username: '',
+    password: '',
+    _id: '',
+  });
+
+  // Clear local and session storage
+  localStorage.clear();
+  sessionStorage.clear();
+
+  // Reset logged-in status
+  setLoggedIn(false);
+  };
+
 
   const handleRegisteration = (e) => {
     e.preventDefault();
@@ -178,14 +220,24 @@ function App() {
           let finalChats = prevChats==null? currentChat:prevChats.concat(newChats); 
           setMessages(finalChats)
           localStorage.setItem(chatroomID, JSON.stringify(finalChats))
+          setTimeout(scrollToBottom, 10);
       }).catch((err) => {
         setMessages([])
       });
       
   };
 
+  const messagesEndRef = useRef(null); 
+  const messageInputRef = useRef(null);
+  const scrollToBottom = () => {
+    console.log("Scrolling to bottom");
+    messagesEndRef.current?.scrollIntoView({ behaviour: 'smooth'});
+  };
+
   const sendMessage = (e) =>{
     e.preventDefault();
+    if (!message.trim()) return; // no empty messages
+
     axios
       .post(`${apiroot}/message`, {
         chatroom_id: chatroomId,
@@ -199,6 +251,9 @@ function App() {
         let newMessage = prevChats==null?[response.data]:prevChats.concat([response.data])
         setMessages(newMessage)
         localStorage.setItem(chatroomId, JSON.stringify(newMessage))
+        setMessage('');
+        setTimeout(scrollToBottom, 10); 
+        messageInputRef.current.focus(); // Keep the input focused
       }).catch((err) => {
         toast.error("Message Failed To Send")
       });
@@ -210,7 +265,7 @@ function App() {
       <div className="home_page">
         <Toaster position='top-center' richColors />
         <div className="sidebar">
-          <h3>Welcome {credentials.username}</h3>
+          <h3>Welcome, {credentials.username}</h3>
           <div>
               {chatrooms.length==0?'no chatrooms to show':chatrooms.map((chatroom) => (
                   <div key={chatroom._id}>
@@ -220,24 +275,43 @@ function App() {
           </div>
         </div>
         <div className="chatroom">
-          <h1  id="d1">chatroom</h1>
-          <div>
-            {messages.length==0?'no chats to show':messages.map((msg) => (
-                <div key={msg._id}>
-                  <p>{msg.sender}: {msg.content}</p>
+          <h1 id="d1">Chatroom</h1>
+          
+          <div className="messages-container">
+            {messages.length === 0 ? (
+              'No chats to show'
+            ) : (
+              messages.map((msg) => (
+                <div
+                  key={msg._id}
+                  className={`message ${
+                    msg.sender === credentials._id ? 'sender' : 'receiver'
+                  }`}
+                >
+                  <div className="bubble">
+                    <p>{msg.content}</p>
+                  </div>
                 </div>
-            ))}
-            <div>
-              {chatroomId==''?<div></div>:
-              <form onSubmit={sendMessage}>
-                <input type="text" name="message" value={message} onChange={handleMessage} required/>
-                <button type="submit">Send</button>
-              </form>
-              }
-            </div>
+              ))
+            )}
+            <div ref={messagesEndRef}></div>
           </div>
+
+          {chatroomId !== '' && (
+            <form className="message-form" onSubmit={sendMessage}>
+              <input
+                type="text"
+                name="message"
+                value={message}
+                onChange={handleMessage}
+                required
+                ref={messageInputRef}
+              />
+              <button type="submit">Send</button>
+            </form>
+          )}
         </div>
-        <button onClick={()=>{setLoggedIn(false);chatrooms.length = 0;}}>Log out</button>
+        <button className="logout-button" onClick={handleLogout}>Log out</button>
       </div>
     );
   }
