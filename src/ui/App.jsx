@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from "axios";
+import { io } from "socket.io-client";
 import { Toaster, toast } from 'sonner';
 
 import './App.css';
@@ -26,7 +27,9 @@ async function decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp) {// Paramt
   })
 }
 
-function App() {
+let socket;
+
+const App = () => {
   
   const [isWasmLoaded, setIsWasmLoaded] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
@@ -41,7 +44,6 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
 
-
   useEffect(() => {
     async function loadWasm() {
       const goWasm = new window.Go();
@@ -54,16 +56,16 @@ function App() {
     loadWasm();
   }, []);
 
-  const createDB = async() =>{
+  const createDB = async() => {
     await window.electron.createDB()
     console.log('DB created')
   };
-  const createDHTable = async() =>{
+  const createDHTable = async() => {
     await window.electron.createDHTable()
     console.log('DH Key Table created')
   };
   
-  const genAndStoreDHKeys = async() =>{
+  const genAndStoreDHKeys = async() => {
     await window.electron.delAllDHKeys() // for testing purposes, DO NOT keep this here, fix the issue
 
     const genDHKeys = await generateDHKeys(100);
@@ -143,9 +145,8 @@ function App() {
           ...credentials,
           _id: userId,
         });
-        setLoggedIn(true)
-        genAndStoreDHKeys()
-        getChatrooms()
+
+        setupSocket();
       })
       .catch((err) => {
         toast.error('Email or Password is incorrect.')
@@ -153,6 +154,35 @@ function App() {
       });
 
   };
+
+  const setupSocket = () => {
+    socket = io("http://localhost:8000", {
+          extraHeaders: {
+            AUTHORIZATION: sessionStorage.getItem("JWT"),
+          }
+    });
+
+    
+    socket.on("error", (data) => {
+      toast.error("Socket error. Check console.")
+      console.log(data);
+    });
+    socket.on("notification", (data) => {
+      console.log(data);
+    });
+    socket.on("newMessage", handleMsgIn);
+
+    socket.on("connect", () => {
+      setLoggedIn(true);
+      genAndStoreDHKeys();
+      getChatrooms();
+    });
+  };
+
+  const handleMsgIn = (data) => {
+    console.log(data);
+    addMessage(data, data.chatroom);
+  };  
 
 
   const handleLogout = () => {
@@ -165,6 +195,7 @@ function App() {
     password: '',
     _id: '',
   });
+  socket.disconnect();
 
   // Clear local and session storage
   localStorage.clear();
@@ -173,7 +204,6 @@ function App() {
   // Reset logged-in status
   setLoggedIn(false);
   };
-
 
   const handleRegisteration = (e) => {
     e.preventDefault();
@@ -192,7 +222,7 @@ function App() {
       });
   };
 
-  const getChatrooms = (e)=>{
+  const getChatrooms = () => {
     axios
       .get(`${apiroot}/chatroom`, {
         headers: {
@@ -200,31 +230,36 @@ function App() {
         },
       }).then((response) => {
           setChatrooms(response.data);
+          for (let room of response.data) {
+            socket.emit("joinRoom", { "chatroomId": room._id });
+          }
       }).catch((err) => {
           // setTimeout(getChatrooms, 3000);
       });
     };
     
 
-  const getMessages = (chatroomID) => (e)=>{
-    setChatroomId(chatroomID)
-    axios
-      .get(`${apiroot}/message/${chatroomID}`, {
+  const getMessages = (chatroomID) => async (e) =>{
+    setChatroomId(chatroomID);
+
+    try {
+      let response = await axios.get(`${apiroot}/message/${chatroomID}`, {
         headers: {
-            Authorization: sessionStorage.getItem("JWT"),
-        },
-      }).then((response) => {
-          const currentChat = response.data
-          const prevChats = JSON.parse(localStorage.getItem(chatroomID))
-          let newChats = prevChats==null? currentChat:currentChat.filter((e) => prevChats.every((val) => val._id !== e._id));
-          let finalChats = prevChats==null? currentChat:prevChats.concat(newChats); 
-          setMessages(finalChats)
-          localStorage.setItem(chatroomID, JSON.stringify(finalChats))
-          setTimeout(scrollToBottom, 10);
-      }).catch((err) => {
-        setMessages([])
+          Authorization: sessionStorage.getItem("JWT"),
+        }
       });
-      
+      // console.log(response);
+      const currentChat = response.data
+      const prevChats = JSON.parse(localStorage.getItem(chatroomID))
+      let newChats = prevChats == null ? currentChat : currentChat.filter((e) => prevChats.every((val) => val._id !== e._id));
+      let finalChats = prevChats==null ? currentChat : prevChats.concat(newChats); 
+      setMessages(finalChats)
+      localStorage.setItem(chatroomID, JSON.stringify(finalChats))
+      setTimeout(scrollToBottom, 10);
+
+    } catch (e) {
+      setMessages([]);
+    }      
   };
 
   const messagesEndRef = useRef(null); 
@@ -234,29 +269,24 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behaviour: 'smooth'});
   };
 
+  const addMessage = (msg, roomId) => { 
+    const prevChats = JSON.parse(localStorage.getItem(roomId))
+    let newMessage = prevChats == null ? [msg] : prevChats.concat([msg])
+    setMessages(newMessage)
+    localStorage.setItem(roomId, JSON.stringify(newMessage))
+    setMessage('');
+    setTimeout(scrollToBottom, 10); 
+  };
+
   const sendMessage = (e) =>{
     e.preventDefault();
     if (!message.trim()) return; // no empty messages
 
-    axios
-      .post(`${apiroot}/message`, {
-        chatroom_id: chatroomId,
-        content: message,
-      }, {
-        headers: {
-            Authorization: sessionStorage.getItem("JWT"),
-        },
-      }).then((response) => {
-        const prevChats = JSON.parse(localStorage.getItem(chatroomId))
-        let newMessage = prevChats==null?[response.data]:prevChats.concat([response.data])
-        setMessages(newMessage)
-        localStorage.setItem(chatroomId, JSON.stringify(newMessage))
-        setMessage('');
-        setTimeout(scrollToBottom, 10); 
-        messageInputRef.current.focus(); // Keep the input focused
-      }).catch((err) => {
-        toast.error("Message Failed To Send")
-      });
+    socket.emit("chatroomMessage", {
+      "chatroomId": chatroomId,
+      "message": message
+    });
+    messageInputRef.current.focus();
   };
 
   
@@ -267,7 +297,7 @@ function App() {
         <div className="sidebar">
           <h3>Welcome, {credentials.username}</h3>
           <div>
-              {chatrooms.length==0?'no chatrooms to show':chatrooms.map((chatroom) => (
+              {chatrooms.length==0?'no chatrooms to show': chatrooms.map((chatroom) => (
                   <div key={chatroom._id}>
                       <button onClick={getMessages(chatroom._id)}>{chatroom.name}</button>
                   </div>
@@ -289,7 +319,7 @@ function App() {
                   }`}
                 >
                   <div className="bubble">
-                    <p>{msg.content}</p>
+                    <p>{msg.content || msg.message}</p>
                   </div>
                 </div>
               ))
@@ -351,7 +381,6 @@ function App() {
               <a href="#" className="bttn_one" onClick={() => {setToggleLoginRegister(true);}}>Have an account?<br/>Log in here</a>
             </div>
           </div>
-          {/* <button type="button" onClick={handleWASM}>Handle WASM</button> */}
         </form>
       </div>
     );
