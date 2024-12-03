@@ -2,13 +2,14 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'path'; 
 import isDev from 'electron-is-dev';
 import database from 'better-sqlite3-multiple-ciphers';
+import { createHash } from 'crypto';
 
 let mainWin
 
 app.on('ready', () => {
     const win = new BrowserWindow({
-        width: 800,
-        height: 600,
+        width: 1280,
+        height: 720,
         webPreferences: {
             preload: path.join(app.getAppPath(), isDev ? '.' : '..', '/electron/preload.cjs')
         }
@@ -51,15 +52,72 @@ ipcMain.handle("createDHTable", async (event, args) => {
 
 });
 
+ipcMain.handle("createMsgsTable", async (event, args) => {
+    const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
+    // db.pragma(`key='${args[0]}'`);
+
+    const query = `
+        CREATE TABLE messages (
+            id INTEGER PRIMARY KEY,
+            mongoId STRING NOT NULL,
+            chatroom STRING NOT NULL,
+            sender STRING NOT NULL,
+            content STRING NOT NULL,
+            timestamp STRING NOT NULL
+            )`
+    ;
+    db.exec(query);
+    db.close();
+
+});
+
+ipcMain.handle("insertMsg", async (event, msg) => {
+    const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
+    // db.pragma(`key='${args[0]}'`);
+
+    const insertData = db.prepare("INSERT INTO messages (mongoId, chatroom, sender, content, timestamp) VALUES (?, ?, ?, ?, ?)").run(msg._id, msg.chatroom, msg.sender, msg.message.content, msg.message.timestamp);
+    db.close();
+});
+
+ipcMain.handle("getMsgs", async (event, chatroom) => {
+    const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
+    // db.pragma(`key='${args[0]}'`);
+
+    const msgs = db.prepare("SELECT * FROM messages WHERE chatroom = ? ORDER BY id asc").all(chatroom);
+    db.close();
+    
+    return msgs;
+});
+
+ipcMain.handle("getMsg", async (event, msgId) => {
+    const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
+    // db.pragma(`key='${args[0]}'`);
+
+    const msg = db.prepare("SELECT * FROM messages WHERE mongoId = ?").get(msgId);
+    db.close();
+    
+    return msg;
+});
+
 ipcMain.handle("insertDHKeys", async (event, args) => {
     const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
     // db.pragma(`key='${args[0]}'`);
     const keys = args;
 
     for (let key of keys) {
-        const insertData = db.prepare("INSERT INTO dh_keys (id, privKey, pubKey) VALUES (?, ?, ?)").run(key.id, key.privKey, key.pubKey);
+        const insertData = db.prepare("INSERT INTO dh_keys (privKey, pubKey) VALUES (?, ?)").run(key.privKey, key.pubKey);
     }
     db.close();
+});
+
+ipcMain.handle("getKeys", async (event, numKeys) => {
+    const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
+    // db.pragma(`key='${args[0]}'`);
+
+    const keys = db.prepare("SELECT id, pubKey FROM dh_keys ORDER BY id DESC LIMIT ?").all(numKeys);
+    db.close();
+    
+    return keys;
 });
 
 ipcMain.handle("getDHKey", async (event, args) => {
@@ -93,3 +151,8 @@ ipcMain.on("alert", (event, args) => {
     }
     dialog.showMessageBox(mainWin, options)
 });
+
+ipcMain.handle("sha256", async (event, str) => {
+    let hash = createHash('sha256').update(str).digest('base64')
+    return hash;
+})

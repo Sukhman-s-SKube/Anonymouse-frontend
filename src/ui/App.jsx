@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from "axios";
 import { io } from "socket.io-client";
 import { Toaster, toast } from 'sonner';
-import { v4 as uuidv4 } from 'uuid';
 
 import './App.css';
 import './wasm_exec.js';
@@ -13,19 +12,19 @@ async function generateDHKeys(numKeys) {// Parameters (1): numKeys int
   return new Promise((resolve) => {
     const res = window.generateDHKeys(numKeys);
     resolve(res);
-  })
+  });
 }
 async function encryptMsg(otherPubDH, msg, timestamp) {// Paramters (3): otherPubDH string, msg string, timestamp string
   return new Promise((resolve) => {
     const res = window.encryptMsg(otherPubDH, msg, timestamp);
     resolve(res);
-  })
+  });
 }
-async function decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp) {// Paramters (4): otherPubDH string, myPrvDH string, cipherText string, timestamp string
+async function decryptMsg(cipherText, timestamp, otherPubDH, myPrvDH) {// Paramters (4): cipherText string, timestamp string, otherPubDH string || masterSec string, myPrvDH string || null
   return new Promise((resolve) => {
-    const res = window.decryptMsg(otherPubDH, myPrvDH, cipherText, timestamp);
+    const res = window.decryptMsg(cipherText, timestamp, otherPubDH, myPrvDH);
     resolve(res);
-  })
+  });
 }
 
 let socket;
@@ -42,9 +41,11 @@ const App = () => {
   });
   const [chatrooms, setChatrooms] = useState([]);
   const [chatroomId, setChatroomId] = useState('');
+  const [chatroomMember, setChatroomMember] = useState('');
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
   const [newMessageIndicator, setNewMessageIndicator] = useState({});
+  const outMsgKeys = useRef({});
 
   useEffect(() => {
     async function loadWasm() {
@@ -74,57 +75,57 @@ const App = () => {
     chatroomIdRef.current = chatroomId;
   }, [chatroomId]);
 
+  useEffect(() => {
+    console.log("Current credentials:", credentials);
+  }, [credentials]);
+
+  useEffect(() => {
+    console.log("Current chatroom ID:", chatroomId);
+  }, [chatroomId]);
+
+  useEffect(() => {
+    console.log("Messages updated:", messages);
+  }, [messages]);
+
   const createDB = async() => {
-    await window.electron.createDB()
-    console.log('DB created')
+    await window.electron.createDB();
+    console.log('DB created');
   };
   const createDHTable = async() => {
-    await window.electron.createDHTable()
-    console.log('DH Key Table created')
+    await window.electron.createDHTable();
+    console.log('DH Key Table created');
+  };
+  const createMsgsTable = async() => {
+    await window.electron.createMsgsTable();
+    console.log('Msgs Table created');
   };
   
   const genAndStoreDHKeys = async() => {
-    await window.electron.delAllDHKeys() // for testing purposes, DO NOT keep this here, fix the issue
+    const numKeys = 100;
 
-    const genDHKeys = await generateDHKeys(100);
-    const DH = JSON.parse(genDHKeys)
-    if(DH.error !== undefined) 
-      return await toast.error('GO DH keys error: ', DH.error);
+    const genDHKeys = await generateDHKeys(numKeys);
+    const DH = JSON.parse(genDHKeys);
+    if(DH.error !== undefined) return toast.error('GO DH keys error: ', DH.error);
     
-    await window.electron.insertDHKeys(DH.keys)
-    console.log('DH Keys stored')
-    
-    console.log(DH.keys)
-    for(let key of DH.keys){
-      delete key.privKey
-    }
-    console.log('DH priv Keys removed')
-    console.log(DH.keys)
-    
-    axios
-      .put(`${apiroot}/user/dh_keys`,DH.keys,{
+    await window.electron.insertDHKeys(DH.keys);
+
+    let keys = await window.electron.getKeys(numKeys);
+
+    // for(let key in DH.keys) {
+    //   DH.keys[key].id = ids[key];
+    //   delete DH.keys[key].privKey;
+    // }
+
+    try {
+      await axios.put(`${apiroot}/user/dh_keys`, keys, {
         headers: {
             Authorization: sessionStorage.getItem("JWT"),
         },
-      }
-      )
-      .then((response) => {
-        console.log("Diffie-Hellman keys updated successfully.")
-      })
-      .catch((err) => {
-        console.log("Diffie-Hellman keys NOT updated successfully.")
       });
-
-
-    // const date = new Date()
-    // const enc = await encryptMsg(tK.keys[0].pubKey, 'hello', date.toJSON());
-
-
-    // const dec = await decryptMsg(enc.pubKey, tK.keys[0].privKey,
-    //                              enc.cipherText, date.toJSON());
-    // console.log(enc)
-    // console.log(dec)
-    // document.getElementById("d1").innerHTML = typeof dec
+    } catch(e) {
+      console.log(e);
+      return toast.error("Gen Keys: Failed to send keys to server. Check console for error");
+    }
   }
 
   const handleChange = (e) => {
@@ -146,41 +147,35 @@ const App = () => {
     );
     return JSON.parse(jsonPayload);
   }
-
-  function generateUniqueId() {
-    return uuidv4(); // Generates a unique identifier
-  }
-
-  const handleLogIn = (e) => {
+  
+  const handleLogIn = async (e) => {
     e.preventDefault();
-    axios
-      .post(`${apiroot}/user/login`, 
-        credentials
-      )
-      .then((response) => {
-        const token = response.data.token;
-        sessionStorage.setItem("JWT", token);
-        // Decode the token to extract the user ID
-        const decodedToken = parseJwt(token);
-        const userId = decodedToken.user_id; // Extract user_id
-        setCredentials((prev) => ({
-          ...prev,
-          _id: userId,
-        }));
 
-        setupSocket();
-      })
-      .catch((err) => {
-        toast.error('Email or Password is incorrect.')
-        setLoggedIn(false);
-      });
+    let response;
+    try {
+      response = await axios.post(`${apiroot}/user/login`, credentials);
+    } catch(err) {
+      setLoggedIn(false);
+      toast.error("Login: Failed to login. Check console for error");
+      console.log(err);
+      return;
+    }
+    
+    const token = response.data.token;
+    sessionStorage.setItem("JWT", token);
 
+    // Decode the token to extract the user ID
+    const decodedToken = parseJwt(token);
+    const userId = decodedToken.user_id; // Extract user_id
+    setCredentials({ ...credentials, _id: userId });
+
+    await setupSocket();
   };
 
-  const setupSocket = () => {
+  const setupSocket = async () => {
     socket = io("http://localhost:8000", {
           extraHeaders: {
-            AUTHORIZATION: sessionStorage.getItem("JWT"),
+            Authorization: sessionStorage.getItem("JWT"),
           }
     });
 
@@ -190,9 +185,8 @@ const App = () => {
       console.log(data);
     });
     socket.on("notification", (data) => {
-      console.log(data);
     });
-    socket.on("newMessage", handleMsgIn);
+    socket.on("newMessage", await handleMsgIn);
 
     socket.on("connect", () => {
       setLoggedIn(true);
@@ -201,23 +195,42 @@ const App = () => {
     });
 
   };
-
   
 
-  const handleMsgIn = (data) => {
+  const handleMsgIn = async (data) => {
     const currentUserId = credentialsRef.current._id;
     const currentChatroomId = chatroomIdRef.current;
   
-    // Skip processing if the message is sent by the current user
     if (data.sender === currentUserId) {
+      let hash = await window.electron.sha256(data.message.content + data.message.pubKey + data.message.timestamp);
+      if (outMsgKeys.current[hash]) {
+        let res = await decryptMsg(data.message.content, data.message.timestamp, outMsgKeys.current[hash], "");
+        if (res["error"] != "") {
+          console.log(res["error"]);
+          return toast.error("Msg In: Failed to decrypt msg. Check console for error");
+        }
+
+        delete outMsgKeys.current[hash];
+        data.message.content = res["plainText"];
+        // data._id = parseInt(data._id, 16);
+        await addMessage(data, data.chatroom);
+      }
       return;
     }
-  
+
+    let myKey = await electron.getDHKey(parseInt(data.message.privKeyId));
+
+    let res = await decryptMsg(data.message.content, data.message.timestamp, data.message.pubKey, myKey.privKey);
+    if (res["error"] != "") {
+      console.log(res["error"]);
+      return toast.error("Msg In: Failed to decrypt msg. Check console for error");
+    }
+    data.message.content = res["plainText"];
+    // data._id = parseInt(data._id, 16);
     // If the message belongs to the currently active chatroom
     if (data.chatroom === currentChatroomId) {
-      addMessage(data, currentChatroomId); // Add it to the UI immediately
+      await addMessage(data, currentChatroomId); // Add it to the UI immediately
     } else {
-      // Notify the user about the new message in another chatroom
       const chatroomName =
         chatroomsRef.current.find((room) => room._id === data.chatroom)?.name ||
         'unknown chatroom';
@@ -229,9 +242,6 @@ const App = () => {
       }));
     }
   };
-  
-  
-
 
   const handleLogout = () => {
   // Clear all relevant states
@@ -287,28 +297,56 @@ const App = () => {
     };
     
 
-  const getMessages = (chatroomID) => async (e) =>{
-    setChatroomId(chatroomID);
+  const getMessages = (room) => async (e) => {
+    setChatroomId(room._id);
 
-    // Reset the new message indicator for this chatroom
     setNewMessageIndicator((prev) => ({
       ...prev,
-      [chatroomID]: false,
+      [room._id]: false,
     }));
 
+    for (let mem of room.members) {
+      if (mem != credentials._id) {
+        setChatroomMember(mem);
+        break;
+      }
+    }
+    
     try {
-      let response = await axios.get(`${apiroot}/message/${chatroomID}`, {
+      let response = await axios.get(`${apiroot}/message/${room._id}`, {
         headers: {
           Authorization: sessionStorage.getItem("JWT"),
         }
       });
-      // console.log(response);
-      const currentChat = response.data
-      const prevChats = JSON.parse(localStorage.getItem(chatroomID))
-      let newChats = prevChats == null ? currentChat : currentChat.filter((e) => prevChats.every((val) => val._id !== e._id));
-      let finalChats = prevChats==null ? currentChat : prevChats.concat(newChats); 
-      setMessages(finalChats)
-      localStorage.setItem(chatroomID, JSON.stringify(finalChats))
+      const currentChat = response.data;
+      let storedChat = await window.electron.getMsgs(room._id);
+
+
+      if (currentChat.length > storedChat.length) {
+        for (let i = storedChat.length; i < currentChat.length; i++) {
+          let myKey = await window.electron.getDHKey(parseInt(currentChat[i].message.privKeyId));
+
+          let res = await decryptMsg(currentChat[i].message.content, currentChat[i].message.timestamp, currentChat[i].message.pubKey, myKey.privKey);
+          if (res["error"] != "") {
+            console.log(res["error"]);
+            return toast.error("Msg In: Failed to decrypt msg. Check console for error");
+          }
+          currentChat[i].message.content = res["plainText"];
+          await window.electron.insertMsg(currentChat[i]);
+          currentChat[i] = {};
+        }
+      }
+
+      let finalChat = await window.electron.getMsgs(room._id);
+      setMessages(finalChat);
+      
+
+      // const prevChats = JSON.parse(localStorage.getItem(room._id))
+
+      // let newChats = prevChats == null ? currentChat : currentChat.filter((e) => prevChats.every((val) => val._id !== e._id));
+      // let finalChats = prevChats==null ? currentChat : prevChats.concat(newChats); 
+      // setMessages(finalChats)
+      // localStorage.setItem(room._id, JSON.stringify(finalChats))
       setTimeout(scrollToBottom, 10);
 
     } catch (e) {
@@ -323,58 +361,74 @@ const App = () => {
   };
 
 
-  const addMessage = (msg, roomId) => {
+  const addMessage = async (msg, roomId) => {
     const prevChats = JSON.parse(localStorage.getItem(roomId)) || [];
     const updatedMessages = [...prevChats, msg];
+    window.electron.insertMsg(msg);
+    let parsedMsg = await window.electron.getMsg(msg._id);
   
     if (roomId === chatroomIdRef.current) {
       // Update the UI for the current chatroom
-      setMessages((prevMessages) => [...prevMessages, msg]); // Append the new message
+      setMessages((prevMessages) => [...prevMessages, parsedMsg]); // Append the new message
       setTimeout(scrollToBottom, 10); // Scroll to the latest message
     }
   
     // Always update localStorage for the respective chatroom
-    localStorage.setItem(roomId, JSON.stringify(updatedMessages));
+    // localStorage.setItem(roomId, JSON.stringify(updatedMessages));
   };
   
   
 
-  const sendMessage = (e) => {
+  const sendMessage = async (e) => {
     e.preventDefault();
-  
-    // Trim the message to ensure no empty strings are sent
-    const trimmedMessage = message.trim();
-    if (!trimmedMessage) {
-      toast.error('Message cannot be empty');
-      return;
+    if (!message.trim()) return; // no empty messages
+    
+    let response;
+
+    try {
+      response = await axios.delete(`${apiroot}/user/dh_keys/${chatroomMember}`, {
+        headers: {
+          Authorization: sessionStorage.getItem("JWT"),
+        }
+      });
+    } catch (e) {
+      toast.error("Sending Msg: Failed to get other user's key. Check console for error");
+      console.log(e);
+      return
     }
-  
-    // Construct the payload
-    const newMessage = {
-      chatroomId: chatroomId, // Correct key for the chatroom
-      message: {
-        content: trimmedMessage, // Message text
-        pubKey: "public_key_example", // Replace with your actual public key logic
-        timestamp: new Date().toISOString(), // Current timestamp
-      },
+
+    const otherPubDH = response.data.popped_key.pubKey;
+    const otherPubDHId = response.data.popped_key.id; 
+    const timestamp = new Date();
+
+
+    let encData = await encryptMsg(otherPubDH, message, timestamp.toJSON());
+    if (encData["error"] != "") {
+      toast.error("Sending Msg: Failed to encrypt message. Check console for error");
+      console.log(encData["error"]);
+      return
+    }
+
+    let payload = {
+      "content": encData["cipherText"],
+      "pubKey": encData["pubKey"],
+      "privKeyId": otherPubDHId.toString(),
+      "timestamp": timestamp.toJSON(),
     };
-  
-    // Emit the message to the backend
-    socket.emit("chatroomMessage", newMessage);
-  
-    // Add the message to the local UI immediately
-    addMessage(
-      {
-        _id: generateUniqueId(), // Temporary ID until backend responds
-        chatroom: chatroomId,
-        sender: credentials._id,
-        message: newMessage.message,
-      },
-      chatroomId
-    );
-  
-    // Clear the input field
-    setMessage('');
+
+    let hash = await window.electron.sha256(payload.content + payload.pubKey + payload.timestamp);
+
+    let val = {};
+    val[`${hash}`] = encData["masterSec"];
+    
+    outMsgKeys.current = {...outMsgKeys.current, ...val};
+    
+
+    socket.emit("chatroomMessage", {
+      "chatroomId": chatroomId,
+      "message": payload
+    });
+    setMessage('')
     messageInputRef.current.focus();
   };
   
@@ -391,7 +445,7 @@ const App = () => {
               {chatrooms.length==0?'no chatrooms to show': chatrooms.map((chatroom) => (
                   <div key={chatroom._id}>
                       <button 
-                      onClick={getMessages(chatroom._id)}
+                      onClick={getMessages(chatroom)}
                       className={newMessageIndicator[chatroom._id] ? 'new-message' : ''}
                       >
                         {chatroom.name}</button>
@@ -408,13 +462,13 @@ const App = () => {
             ) : (
               messages.map((msg) => (
                 <div
-                  key={msg._id}
+                  key={msg.mongoId}
                   className={`message ${
                     msg.sender === credentials._id ? 'sender' : 'receiver'
                   }`}
                 >
                   <div className="bubble">
-                    <p>{msg.message?.content}</p>
+                    <p>{msg.content}</p>
                   </div>
                 </div>
               ))
@@ -446,7 +500,7 @@ const App = () => {
     return (
       <div className="login-container">
         <Toaster position='top-center' richColors />
-        <button onClick={()=>{createDB();createDHTable();}}>Create db + table</button>
+        <button onClick={()=>{createDB();createDHTable();createMsgsTable();}}>Create db + table</button>
         <h2 onClick={genAndStoreDHKeys} id="d1">{toggleLoginRegister?'Login':'Register'}</h2>
         <form onSubmit={toggleLoginRegister?handleLogIn:handleRegisteration}>
           <div>
