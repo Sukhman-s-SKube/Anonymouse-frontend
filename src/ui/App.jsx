@@ -74,18 +74,6 @@ const App = () => {
     chatroomIdRef.current = chatroomId;
   }, [chatroomId]);
 
-  useEffect(() => {
-    console.log("Current credentials:", credentials);
-  }, [credentials]);
-
-  useEffect(() => {
-    console.log("Current chatroom ID:", chatroomId);
-  }, [chatroomId]);
-
-  useEffect(() => {
-    console.log("Messages updated:", messages);
-  }, [messages]);
-
   const createDB = async() => {
     await window.electron.createDB()
     console.log('DB created')
@@ -220,23 +208,15 @@ const App = () => {
     const currentUserId = credentialsRef.current._id;
     const currentChatroomId = chatroomIdRef.current;
   
-    console.log("Incoming message:", data);
-    console.log("Incoming message chatroom ID:", data.chatroom);
-    console.log("Current user ID (from ref):", currentUserId);
-    console.log("Current chatroom ID (from ref):", currentChatroomId);
-  
     // Skip processing if the message is sent by the current user
     if (data.sender === currentUserId) {
-      console.log("Skipping notification for sender's own message");
       return;
     }
   
     // If the message belongs to the currently active chatroom
     if (data.chatroom === currentChatroomId) {
-      console.log("Adding message to the current chatroom UI");
       addMessage(data, currentChatroomId); // Add it to the UI immediately
     } else {
-      console.log("Message is for a different chatroom");
       // Notify the user about the new message in another chatroom
       const chatroomName =
         chatroomsRef.current.find((room) => room._id === data.chatroom)?.name ||
@@ -297,7 +277,6 @@ const App = () => {
             Authorization: sessionStorage.getItem("JWT"),
         },
       }).then((response) => {
-          console.log("Chatrooms fetched:", response.data); // Log the fetched chatrooms
           setChatrooms(response.data);
           for (let room of response.data) {
             socket.emit("joinRoom", { "chatroomId": room._id });
@@ -310,7 +289,6 @@ const App = () => {
 
   const getMessages = (chatroomID) => async (e) =>{
     setChatroomId(chatroomID);
-    console.log("Selected chatroom ID set:", chatroomID);
 
     // Reset the new message indicator for this chatroom
     setNewMessageIndicator((prev) => ({
@@ -341,7 +319,6 @@ const App = () => {
   const messagesEndRef = useRef(null); 
   const messageInputRef = useRef(null);
   const scrollToBottom = () => {
-    console.log("Scrolling to bottom");
     messagesEndRef.current?.scrollIntoView({ behaviour: 'smooth'});
   };
 
