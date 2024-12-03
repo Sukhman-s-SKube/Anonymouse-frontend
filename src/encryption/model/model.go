@@ -6,7 +6,6 @@ type DHGenRes struct {
 }
 
 type DHKey struct {
-	Id      int    `json:"id"`
 	PubKey  string `json:"pubKey"`
 	PrivKey string `json:"privKey"`
 }

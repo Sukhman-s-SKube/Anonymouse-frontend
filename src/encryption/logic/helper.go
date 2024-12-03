@@ -88,7 +88,7 @@ func decryptGCM(key, cipherBytes []byte) (string, error) {
 	return string(plainBytes), nil
 }
 
-func generateKeyPair(id int) (model.DHKey, error) {
+func generateKeyPair() (model.DHKey, error) {
 	crv := ecdh.P256()
 	privKey, err := crv.GenerateKey(rand.Reader)
 	if err != nil {
@@ -98,7 +98,7 @@ func generateKeyPair(id int) (model.DHKey, error) {
 	pubKey := hex.EncodeToString(privKey.PublicKey().Bytes())
 	privKeyStr := hex.EncodeToString(privKey.Bytes())
 
-	key := model.DHKey{Id: id, PubKey: pubKey, PrivKey: privKeyStr}
+	key := model.DHKey{PubKey: pubKey, PrivKey: privKeyStr}
 
 	return key, nil
 }
