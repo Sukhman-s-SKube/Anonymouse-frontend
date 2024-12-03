@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from "axios";
 import { io } from "socket.io-client";
 import { Toaster, toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
 
 import './App.css';
 import './wasm_exec.js';
@@ -43,6 +44,7 @@ const App = () => {
   const [chatroomId, setChatroomId] = useState('');
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
+  const [newMessageIndicator, setNewMessageIndicator] = useState({});
 
   useEffect(() => {
     async function loadWasm() {
@@ -55,6 +57,34 @@ const App = () => {
 
     loadWasm();
   }, []);
+
+  const credentialsRef = useRef(credentials);
+  const chatroomIdRef = useRef(chatroomId);
+  const chatroomsRef = useRef(chatrooms);
+
+  useEffect(() => {
+    chatroomsRef.current = chatrooms;
+  }, [chatrooms]);
+  
+  useEffect(() => {
+    credentialsRef.current = credentials;
+  }, [credentials]);
+  
+  useEffect(() => {
+    chatroomIdRef.current = chatroomId;
+  }, [chatroomId]);
+
+  useEffect(() => {
+    console.log("Current credentials:", credentials);
+  }, [credentials]);
+
+  useEffect(() => {
+    console.log("Current chatroom ID:", chatroomId);
+  }, [chatroomId]);
+
+  useEffect(() => {
+    console.log("Messages updated:", messages);
+  }, [messages]);
 
   const createDB = async() => {
     await window.electron.createDB()
@@ -129,6 +159,10 @@ const App = () => {
     return JSON.parse(jsonPayload);
   }
 
+  function generateUniqueId() {
+    return uuidv4(); // Generates a unique identifier
+  }
+
   const handleLogIn = (e) => {
     e.preventDefault();
     axios
@@ -141,10 +175,10 @@ const App = () => {
         // Decode the token to extract the user ID
         const decodedToken = parseJwt(token);
         const userId = decodedToken.user_id; // Extract user_id
-        setCredentials({
-          ...credentials,
+        setCredentials((prev) => ({
+          ...prev,
           _id: userId,
-        });
+        }));
 
         setupSocket();
       })
@@ -177,12 +211,46 @@ const App = () => {
       genAndStoreDHKeys();
       getChatrooms();
     });
+
   };
 
+  
+
   const handleMsgIn = (data) => {
-    console.log(data);
-    addMessage(data, data.chatroom);
-  };  
+    const currentUserId = credentialsRef.current._id;
+    const currentChatroomId = chatroomIdRef.current;
+  
+    console.log("Incoming message:", data);
+    console.log("Incoming message chatroom ID:", data.chatroom);
+    console.log("Current user ID (from ref):", currentUserId);
+    console.log("Current chatroom ID (from ref):", currentChatroomId);
+  
+    // Skip processing if the message is sent by the current user
+    if (data.sender === currentUserId) {
+      console.log("Skipping notification for sender's own message");
+      return;
+    }
+  
+    // If the message belongs to the currently active chatroom
+    if (data.chatroom === currentChatroomId) {
+      console.log("Adding message to the current chatroom UI");
+      addMessage(data, currentChatroomId); // Add it to the UI immediately
+    } else {
+      console.log("Message is for a different chatroom");
+      // Notify the user about the new message in another chatroom
+      const chatroomName =
+        chatroomsRef.current.find((room) => room._id === data.chatroom)?.name ||
+        'unknown chatroom';
+    
+      toast(`New message in ${chatroomName}`);
+        setNewMessageIndicator((prev) => ({
+        ...prev,
+        [data.chatroom]: true, // Mark the other chatroom as having new messages
+      }));
+    }
+  };
+  
+  
 
 
   const handleLogout = () => {
@@ -229,6 +297,7 @@ const App = () => {
             Authorization: sessionStorage.getItem("JWT"),
         },
       }).then((response) => {
+          console.log("Chatrooms fetched:", response.data); // Log the fetched chatrooms
           setChatrooms(response.data);
           for (let room of response.data) {
             socket.emit("joinRoom", { "chatroomId": room._id });
@@ -241,6 +310,13 @@ const App = () => {
 
   const getMessages = (chatroomID) => async (e) =>{
     setChatroomId(chatroomID);
+    console.log("Selected chatroom ID set:", chatroomID);
+
+    // Reset the new message indicator for this chatroom
+    setNewMessageIndicator((prev) => ({
+      ...prev,
+      [chatroomID]: false,
+    }));
 
     try {
       let response = await axios.get(`${apiroot}/message/${chatroomID}`, {
@@ -269,26 +345,64 @@ const App = () => {
     messagesEndRef.current?.scrollIntoView({ behaviour: 'smooth'});
   };
 
-  const addMessage = (msg, roomId) => { 
-    const prevChats = JSON.parse(localStorage.getItem(roomId))
-    let newMessage = prevChats == null ? [msg] : prevChats.concat([msg])
-    setMessages(newMessage)
-    localStorage.setItem(roomId, JSON.stringify(newMessage))
-    setMessage('');
-    setTimeout(scrollToBottom, 10); 
+
+  const addMessage = (msg, roomId) => {
+    const prevChats = JSON.parse(localStorage.getItem(roomId)) || [];
+    const updatedMessages = [...prevChats, msg];
+  
+    if (roomId === chatroomIdRef.current) {
+      // Update the UI for the current chatroom
+      setMessages((prevMessages) => [...prevMessages, msg]); // Append the new message
+      setTimeout(scrollToBottom, 10); // Scroll to the latest message
+    }
+  
+    // Always update localStorage for the respective chatroom
+    localStorage.setItem(roomId, JSON.stringify(updatedMessages));
   };
+  
+  
 
-  const sendMessage = (e) =>{
+  const sendMessage = (e) => {
     e.preventDefault();
-    if (!message.trim()) return; // no empty messages
-
-    socket.emit("chatroomMessage", {
-      "chatroomId": chatroomId,
-      "message": message
-    });
+  
+    // Trim the message to ensure no empty strings are sent
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage) {
+      toast.error('Message cannot be empty');
+      return;
+    }
+  
+    // Construct the payload
+    const newMessage = {
+      chatroomId: chatroomId, // Correct key for the chatroom
+      message: {
+        content: trimmedMessage, // Message text
+        pubKey: "public_key_example", // Replace with your actual public key logic
+        timestamp: new Date().toISOString(), // Current timestamp
+      },
+    };
+  
+    // Emit the message to the backend
+    socket.emit("chatroomMessage", newMessage);
+  
+    // Add the message to the local UI immediately
+    addMessage(
+      {
+        _id: generateUniqueId(), // Temporary ID until backend responds
+        chatroom: chatroomId,
+        sender: credentials._id,
+        message: newMessage.message,
+      },
+      chatroomId
+    );
+  
+    // Clear the input field
+    setMessage('');
     messageInputRef.current.focus();
   };
-
+  
+  
+  
   
   if (loggedIn) {
     return (
@@ -299,7 +413,11 @@ const App = () => {
           <div>
               {chatrooms.length==0?'no chatrooms to show': chatrooms.map((chatroom) => (
                   <div key={chatroom._id}>
-                      <button onClick={getMessages(chatroom._id)}>{chatroom.name}</button>
+                      <button 
+                      onClick={getMessages(chatroom._id)}
+                      className={newMessageIndicator[chatroom._id] ? 'new-message' : ''}
+                      >
+                        {chatroom.name}</button>
                   </div>
               ))}
           </div>
@@ -319,7 +437,7 @@ const App = () => {
                   }`}
                 >
                   <div className="bubble">
-                    <p>{msg.content || msg.message}</p>
+                    <p>{msg.message?.content}</p>
                   </div>
                 </div>
               ))
