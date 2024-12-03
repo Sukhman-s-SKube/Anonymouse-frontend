@@ -225,6 +225,11 @@ span {
   box-sizing: border-box;
 }
 
+.new-message {
+  font-weight: bold;
+  background-color: #FFBF00; /* Amber color */
+}
+
 .home_page .chatroom .message.sender {
   justify-content: flex-end;
 }
