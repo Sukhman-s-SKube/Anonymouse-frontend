@@ -75,29 +75,29 @@ const App = () => {
     chatroomIdRef.current = chatroomId;
   }, [chatroomId]);
 
-  useEffect(() => {
-    console.log("Current credentials:", credentials);
-  }, [credentials]);
+  // useEffect(() => {
+  //   console.log("Current credentials:", credentials);
+  // }, [credentials]);
 
-  useEffect(() => {
-    console.log("Current chatroom ID:", chatroomId);
-  }, [chatroomId]);
+  // useEffect(() => {
+  //   console.log("Current chatroom ID:", chatroomId);
+  // }, [chatroomId]);
 
-  useEffect(() => {
-    console.log("Messages updated:", messages);
-  }, [messages]);
+  // useEffect(() => {
+  //   console.log("Messages updated:", messages);
+  // }, [messages]);
 
   const createDB = async() => {
     await window.electron.createDB();
-    console.log('DB created');
+    // console.log('DB created');
   };
   const createDHTable = async() => {
     await window.electron.createDHTable();
-    console.log('DH Key Table created');
+    // console.log('DH Key Table created');
   };
   const createMsgsTable = async() => {
     await window.electron.createMsgsTable();
-    console.log('Msgs Table created');
+    // console.log('Msgs Table created');
   };
   
   const genAndStoreDHKeys = async() => {
