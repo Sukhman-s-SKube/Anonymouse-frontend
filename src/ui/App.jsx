@@ -3,6 +3,8 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import { Toaster, toast } from 'sonner';
 
+import { Login } from '@/Components/User/Login';
+
 import './App.css';
 import './wasm_exec.js';
 
@@ -33,6 +35,7 @@ const App = () => {
   
   const [isWasmLoaded, setIsWasmLoaded] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [userId, setUserId] = useState("");
   const [toggleLoginRegister, setToggleLoginRegister] = useState(true);
   const [credentials, setCredentials] = useState({
     username: '',
@@ -174,9 +177,7 @@ const App = () => {
 
   const setupSocket = async () => {
     socket = io("http://localhost:8000", {
-          extraHeaders: {
-            Authorization: sessionStorage.getItem("JWT"),
-          }
+      withCredentials: true
     });
 
     
@@ -498,40 +499,44 @@ const App = () => {
   if (!loggedIn){
     localStorage.clear();
     return (
-      <div className="login-container">
+      <>
         <Toaster position='top-center' richColors />
-        <button onClick={()=>{createDB();createDHTable();createMsgsTable();}}>Create db + table</button>
-        <h2 onClick={genAndStoreDHKeys} id="d1">{toggleLoginRegister?'Login':'Register'}</h2>
-        <form onSubmit={toggleLoginRegister?handleLogIn:handleRegisteration}>
-          <div>
-            <label>Username:</label><br />
-            <input
-              type="text"
-              name="username"
-              value={credentials.username}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div>
-            <label>Password:</label><br />
-            <input
-              type="password"
-              name="password"
-              value={credentials.password}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <button type="submit">{toggleLoginRegister?'Login':'Register'}</button>
-          <div className="bttn_group_wrapper">
-            <div className="bttn_group">
-              <a href="#" className="bttn_two" id="hover" onClick={() => {setToggleLoginRegister(false);}}><span>New?<br/>Register Here</span><div className="bttn_bg"></div></a>
-              <a href="#" className="bttn_one" onClick={() => {setToggleLoginRegister(true);}}>Have an account?<br/>Log in here</a>
-            </div>
-          </div>
-        </form>
-      </div>
+        <Login setLoggedIn={setLoggedIn} setUserId={setUserId}/>
+      </>
+      // <div className="login-container">
+      //   <Toaster position='top-center' richColors />
+      //   <button onClick={()=>{createDB();createDHTable();createMsgsTable();}}>Create db + table</button>
+      //   <h2 onClick={genAndStoreDHKeys} id="d1">{toggleLoginRegister?'Login':'Register'}</h2>
+      //   <form onSubmit={toggleLoginRegister?handleLogIn:handleRegisteration}>
+      //     <div>
+      //       <label>Username:</label><br />
+      //       <input
+      //         type="text"
+      //         name="username"
+      //         value={credentials.username}
+      //         onChange={handleChange}
+      //         required
+      //       />
+      //     </div>
+      //     <div>
+      //       <label>Password:</label><br />
+      //       <input
+      //         type="password"
+      //         name="password"
+      //         value={credentials.password}
+      //         onChange={handleChange}
+      //         required
+      //       />
+      //     </div>
+      //     <button type="submit">{toggleLoginRegister?'Login':'Register'}</button>
+      //     <div className="bttn_group_wrapper">
+      //       <div className="bttn_group">
+      //         <a href="#" className="bttn_two" id="hover" onClick={() => {setToggleLoginRegister(false);}}><span>New?<br/>Register Here</span><div className="bttn_bg"></div></a>
+      //         <a href="#" className="bttn_one" onClick={() => {setToggleLoginRegister(true);}}>Have an account?<br/>Log in here</a>
+      //       </div>
+      //     </div>
+      //   </form>
+      // </div>
     );
   };
   
