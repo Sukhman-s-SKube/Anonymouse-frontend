@@ -19,10 +19,7 @@ export const ToggleBtn = styled.button`
     margin: 10px;
     color: ${({ $isLoginToggled }) => ($isLoginToggled ? 'white' : 'rgb(143, 143, 143)')};
     background-color: transparent;
-
-    /* &.hover {
-
-    } */
+    transition: 0.5s;
 `
 
 export const ToggleBtnBg = styled.div`

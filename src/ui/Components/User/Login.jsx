@@ -1,6 +1,8 @@
 import {useEffect, useState, useRef} from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 
 import './Login.css'
 
@@ -16,7 +18,7 @@ import {
 import { Input } from '@/Components/ui/input';
 import { ToggleContainer, ToggleBtn, ToggleBtnBg } from '@/Components/user/Login.styles';
 
-import { form } from './FormSchema';
+import { formSchema } from './FormSchema';
 
 const apiroot = 'http://localhost:8000/api';
 
@@ -34,6 +36,14 @@ const parseJwt = (token) => {
 
 export const Login = ({setLoggedIn, setUserId, setUsername}) => {
     const [isLoginToggled, setIsLoginToggled] = useState(true);
+
+    const form = useForm({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            username: "",
+            password: "",
+        },
+    });
 
     const loginRequest = async (values) => {
         let response;
@@ -80,7 +90,7 @@ export const Login = ({setLoggedIn, setUserId, setUsername}) => {
                             <FormItem>
                                 <FormLabel>Username</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="username" {...field} />
+                                    <Input placeholder="Username" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -93,13 +103,13 @@ export const Login = ({setLoggedIn, setUserId, setUsername}) => {
                             <FormItem>
                                 <FormLabel>Password</FormLabel>
                                 <FormControl>
-                                    <Input type="password" placeholder="password" {...field} />
+                                    <Input type="password" placeholder="Password" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
-                    <Button className="w-full" type="submit">{isLoginToggled ? 'Login' : "Register"}</Button>
+                    <Button className="w-full text-base" type="submit">{isLoginToggled ? 'Login' : "Register"}</Button>
                 </form>
             </Form>
             <ToggleContainer>
