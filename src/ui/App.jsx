@@ -36,6 +36,7 @@ const App = () => {
   const [isWasmLoaded, setIsWasmLoaded] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [userId, setUserId] = useState("");
+  const [username, setUserName] = useState("")
   const [toggleLoginRegister, setToggleLoginRegister] = useState(true);
   const [credentials, setCredentials] = useState({
     username: '',
@@ -177,7 +178,9 @@ const App = () => {
 
   const setupSocket = async () => {
     socket = io("http://localhost:8000", {
-      withCredentials: true
+      extraHeaders: {
+        Authorization: sessionStorage.getItem("JWT"),
+      }
     });
 
     
@@ -199,7 +202,7 @@ const App = () => {
   
 
   const handleMsgIn = async (data) => {
-    const currentUserId = credentialsRef.current._id;
+    const currentUserId = userId;
     const currentChatroomId = chatroomIdRef.current;
   
     if (data.sender === currentUserId) {
@@ -249,12 +252,12 @@ const App = () => {
   setChatroomId('');
   setMessages([]);
   setMessage('');
-  setCredentials({
-    username: '',
-    password: '',
-    _id: '',
-  });
-  socket.disconnect();
+  // setCredentials({
+  //   username: '',
+  //   password: '',
+  //   _id: '',
+  // });
+  // socket.disconnect();
 
   // Clear local and session storage
   localStorage.clear();
@@ -307,7 +310,7 @@ const App = () => {
     }));
 
     for (let mem of room.members) {
-      if (mem != credentials._id) {
+      if (mem != userId) {
         setChatroomMember(mem);
         break;
       }
@@ -441,7 +444,7 @@ const App = () => {
       <div className="home_page">
         <Toaster position='top-center' richColors />
         <div className="sidebar">
-          <h3>Welcome, {credentials.username}</h3>
+          <h3>Welcome, {username}</h3>
           <div>
               {chatrooms.length==0?'no chatrooms to show': chatrooms.map((chatroom) => (
                   <div key={chatroom._id}>
@@ -465,7 +468,7 @@ const App = () => {
                 <div
                   key={msg.mongoId}
                   className={`message ${
-                    msg.sender === credentials._id ? 'sender' : 'receiver'
+                    msg.sender === userId ? 'sender' : 'receiver'
                   }`}
                 >
                   <div className="bubble">
@@ -501,7 +504,7 @@ const App = () => {
     return (
       <>
         <Toaster position='top-center' richColors />
-        <Login setLoggedIn={setLoggedIn} setUserId={setUserId}/>
+        <Login setLoggedIn={setLoggedIn} setUserId={setUserId} setUsername={setUserName}/>
       </>
       // <div className="login-container">
       //   <Toaster position='top-center' richColors />
@@ -530,10 +533,16 @@ const App = () => {
       //     </div>
       //     <button type="submit">{toggleLoginRegister?'Login':'Register'}</button>
       //     <div className="bttn_group_wrapper">
-      //       <div className="bttn_group">
-      //         <a href="#" className="bttn_two" id="hover" onClick={() => {setToggleLoginRegister(false);}}><span>New?<br/>Register Here</span><div className="bttn_bg"></div></a>
-      //         <a href="#" className="bttn_one" onClick={() => {setToggleLoginRegister(true);}}>Have an account?<br/>Log in here</a>
-      //       </div>
+      //       {/* <div className="bttn_group"> */}
+      //         <div class='toggle-btn-bg'></div>
+      //         <button type='button' class="toggle-btn">Have an account?<br />Log in here</button>
+      //         <button type='button' class="toggle-btn">New?<br />Register Here</button>
+      //         {/* <a href="#" className="bttn_two" id="hover" onClick={() => {setToggleLoginRegister(false);}}>
+      //           <span>New?<br/>Register Here</span>
+      //           <div className="bttn_bg"></div>
+      //         </a>
+      //         <a href="#" className="bttn_one" onClick={() => {setToggleLoginRegister(true);}}>Have an account?<br/>Log in here</a> */}
+      //       {/* </div> */}
       //     </div>
       //   </form>
       // </div>

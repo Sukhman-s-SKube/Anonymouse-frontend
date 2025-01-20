@@ -1,8 +1,8 @@
 import {useEffect, useState, useRef} from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+
+import './Login.css'
 
 import { Button } from '@/Components/ui/button';
 import { 
@@ -14,8 +14,9 @@ import {
     FormMessage,
 } from '@/Components/ui/form';
 import { Input } from '@/Components/ui/input';
+import { ToggleContainer, ToggleBtn, ToggleBtnBg } from '@/Components/user/Login.styles';
 
-import { formSchema } from './FormSchema';
+import { form } from './FormSchema';
 
 const apiroot = 'http://localhost:8000/api';
 
@@ -31,25 +32,13 @@ const parseJwt = (token) => {
     return JSON.parse(jsonPayload);
 };
 
-export const Login = ({setLoggedIn, setUserId}) => {
-    const username = useRef('');
-    const password = useRef('');
-
-    const form = useForm({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            username: "",
-            password: "",
-        },
-    });
+export const Login = ({setLoggedIn, setUserId, setUsername}) => {
+    const [isLoginToggled, setIsLoginToggled] = useState(true);
 
     const loginRequest = async (values) => {
         let response;
         try {
-            response = await axios.post(`${apiroot}/user/login`, {
-                username: values.username,
-                password: values.password
-            });
+            response = await axios.post(`${apiroot}/user/login`, {...values});
             setLoggedIn(true);
         } catch(err) {
             toast.error("Login: Failed to login. Check console for error");
@@ -61,12 +50,29 @@ export const Login = ({setLoggedIn, setUserId}) => {
         sessionStorage.setItem("JWT", response.data.token);
         let decodedToken = parseJwt(response.data.token);
         setUserId(decodedToken.userId);
+        setUsername(values.username);
     };
 
+    const registerRequest = async (values) => {
+        let response;
+        try {
+            response = await axios.post(`${apiroot}/user`, {...values});
+
+        } catch(err) {
+            toast.error("Register: Failed to register. Check console for error");
+            console.log(err);
+            setLoggedIn(false);
+            return;
+        }
+
+        await loginRequest(values);
+    }
+
     return(
-        <>
+        <div className="login-container">
+            <h2 className="text-center text-2xl font-bold">{isLoginToggled ? 'Login' : "Register"}</h2>
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(loginRequest)} className="space-y-8">
+                <form onSubmit={form.handleSubmit(isLoginToggled ? loginRequest : registerRequest)} className="space-y-8">
                     <FormField
                         control={form.control}
                         name="username"
@@ -93,9 +99,14 @@ export const Login = ({setLoggedIn, setUserId}) => {
                             </FormItem>
                         )}
                     />
-                    <Button type="submit">Login</Button>
+                    <Button className="w-full" type="submit">{isLoginToggled ? 'Login' : "Register"}</Button>
                 </form>
             </Form>
-        </>
+            <ToggleContainer>
+                <ToggleBtnBg $isLoginToggled={isLoginToggled}/>
+                <ToggleBtn $isLoginToggled={isLoginToggled} onClick={() => setIsLoginToggled(true)}>Have an account?<br />Log in here</ToggleBtn>
+                <ToggleBtn $isLoginToggled={!isLoginToggled} onClick={() => setIsLoginToggled(false)}>New?<br />Register Here</ToggleBtn>
+            </ToggleContainer>
+        </div>
     )
 };
