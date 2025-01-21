@@ -4,6 +4,7 @@ import { io } from "socket.io-client";
 import { Toaster, toast } from 'sonner';
 
 import { Login } from '@/Components/User/Login';
+import { Chatroom } from '@/Components/Chatroom/Chatroom';
 
 import './App.css';
 import './wasm_exec.js';
@@ -502,10 +503,11 @@ const App = () => {
   if (!loggedIn){
     localStorage.clear();
     return (
-      <>
+      <div className='overflow-y-hidden'>
         <Toaster position='top-center' richColors />
-        <Login setLoggedIn={setLoggedIn} setUserId={setUserId} setUsername={setUserName}/>
-      </>
+        {/* <Login setLoggedIn={setLoggedIn} setUserId={setUserId} setUsername={setUserName}/> */}
+        <Chatroom chatroomId={chatroomId} />
+      </div>
       // <div className="login-container">
       //   <Toaster position='top-center' richColors />
       //   <button onClick={()=>{createDB();createDHTable();createMsgsTable();}}>Create db + table</button>
@@ -548,8 +550,6 @@ const App = () => {
       // </div>
     );
   };
-  
-  return (<h1>You're Not Suppose To See This</h1>);
 }
 
 export default App;
