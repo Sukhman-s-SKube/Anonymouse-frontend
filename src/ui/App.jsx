@@ -5,6 +5,8 @@ import { Toaster, toast } from 'sonner';
 
 import { Login } from '@/Components/User/Login';
 import { Chatroom } from '@/Components/Chatroom/Chatroom';
+import { Sidebar } from '@/Components/Sidebar/Sidebar';
+import { HomePage } from '@/Pages/HomePage';
 
 import './App.css';
 import './wasm_exec.js';
@@ -503,10 +505,11 @@ const App = () => {
   if (!loggedIn){
     localStorage.clear();
     return (
-      <div className='overflow-y-hidden'>
+      <div>
         <Toaster position='top-center' richColors />
+        <HomePage loggedIn={loggedIn} username={username}/>
         {/* <Login setLoggedIn={setLoggedIn} setUserId={setUserId} setUsername={setUserName}/> */}
-        <Chatroom chatroomId={chatroomId} />
+        {/* <Chatroom chatroomId={chatroomId} /> */}
       </div>
       // <div className="login-container">
       //   <Toaster position='top-center' richColors />

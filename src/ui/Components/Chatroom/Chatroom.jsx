@@ -36,7 +36,7 @@ export const Chatroom = ({ chatroomId }) => {
         <div className="chatroom">
             <h1 className="text-center text-4xl font-bold mb-10 text-green-600">Chatroom</h1>
             <div className="flex-1 overflow-y-scroll p-5 box-border">
-                <Message content={"this is a test msg"} isSender={false}/>
+                <Message content={"dfsgfffffffffffffff ffj jfbjbfhdbdjhfb sdhbf sdhbf sdhbf sjhdbf sdjhbf sdjhf bsdjh fbfbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbdshbffffffff jsdhfb sd"} isSender={false}/>
                 <Message content={"this is a test msg"} isSender={false}/>
                 <Message content={"this is a test msg"} isSender={true}/>
                 <Message content={"this is a test msg"} isSender={true}/>
