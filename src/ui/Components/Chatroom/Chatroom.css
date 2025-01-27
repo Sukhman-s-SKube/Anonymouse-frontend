@@ -1,0 +1,9 @@
+.chatroom {
+    flex: 3; 
+    display: flex; 
+    flex-direction: column;
+    padding: 20px;
+    overflow-y: hidden;
+    height: 100%;
+    background-color: #f9f9f9;
+}

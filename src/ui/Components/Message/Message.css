@@ -1,0 +1,9 @@
+.bubble {
+    display: inline-block;
+    max-width: 60%; /* Limit bubble width */
+    padding: 8px 12px;
+    border-radius: 15px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
+}
