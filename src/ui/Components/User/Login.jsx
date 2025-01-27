@@ -3,6 +3,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router';
 
 import './Login.css'
 
@@ -34,8 +35,16 @@ const parseJwt = (token) => {
     return JSON.parse(jsonPayload);
 };
 
-export const Login = ({setLoggedIn, setUserId, setUsername}) => {
+export const Login = ({setLoggedIn, setUserId, setUsername }) => {
     const [isLoginToggled, setIsLoginToggled] = useState(true);
+    const navigate = useNavigate(); 
+
+    useEffect(() => {
+        setLoggedIn(false);
+        setUserId("");
+        setUsername("");
+        sessionStorage.clear();
+    }, []);
 
     const form = useForm({
         resolver: zodResolver(formSchema),
@@ -49,7 +58,6 @@ export const Login = ({setLoggedIn, setUserId, setUsername}) => {
         let response;
         try {
             response = await axios.post(`${apiroot}/user/login`, {...values});
-            setLoggedIn(true);
         } catch(err) {
             toast.error("Login: Failed to login. Check console for error");
             console.log(err);
@@ -59,8 +67,10 @@ export const Login = ({setLoggedIn, setUserId, setUsername}) => {
 
         sessionStorage.setItem("JWT", response.data.token);
         let decodedToken = parseJwt(response.data.token);
-        setUserId(decodedToken.userId);
+        setUserId(decodedToken.user_id);
         setUsername(values.username);
+        setLoggedIn(true);
+        navigate('/home');
     };
 
     const registerRequest = async (values) => {
@@ -76,7 +86,7 @@ export const Login = ({setLoggedIn, setUserId, setUsername}) => {
         }
 
         await loginRequest(values);
-    }
+    };
 
     return(
         <div className="login-container">
@@ -118,5 +128,5 @@ export const Login = ({setLoggedIn, setUserId, setUsername}) => {
                 <ToggleBtn $isLoginToggled={!isLoginToggled} onClick={() => setIsLoginToggled(false)}>New?<br />Register Here</ToggleBtn>
             </ToggleContainer>
         </div>
-    )
+    );
 };
