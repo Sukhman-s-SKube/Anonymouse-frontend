@@ -21,10 +21,8 @@ import { ToggleContainer, ToggleBtn, ToggleBtnBg } from '@/Components/User/Login
 
 import { formSchema } from './FormSchema';
 
-const apiroot = 'https://se4450.duckdns.org/api';
-
 const parseJwt = (token) => {
-    const base64Url = token.split('.')[1]; // Get the payload part of the token
+    const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
         atob(base64)
@@ -35,8 +33,9 @@ const parseJwt = (token) => {
     return JSON.parse(jsonPayload);
 };
 
-export const Login = ({setLoggedIn, setUserId, setUsername }) => {
+export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
     const [isLoginToggled, setIsLoginToggled] = useState(true);
+    const usernameRef = useRef(null);
     const navigate = useNavigate(); 
 
     useEffect(() => {
@@ -44,6 +43,7 @@ export const Login = ({setLoggedIn, setUserId, setUsername }) => {
         setUserId("");
         setUsername("");
         sessionStorage.clear();
+        usernameRef.current.focus();
     }, []);
 
     const form = useForm({
@@ -59,10 +59,10 @@ export const Login = ({setLoggedIn, setUserId, setUsername }) => {
         try {
             response = await axios.post(`${apiroot}/user/login`, {...values});
         } catch(err) {
-            toast.error("Login: Failed to login. Check console for error");
             console.log(err);
             setLoggedIn(false);
-            return;
+            usernameRef.current.focus();
+            return toast.error("Login: Failed to login. Check console for error");
         }
 
         sessionStorage.setItem("JWT", response.data.token);
@@ -79,12 +79,12 @@ export const Login = ({setLoggedIn, setUserId, setUsername }) => {
             response = await axios.post(`${apiroot}/user`, {...values});
 
         } catch(err) {
-            toast.error("Register: Failed to register. Check console for error");
             console.log(err);
             setLoggedIn(false);
-            return;
+            usernameRef.current.focus();
+            return toast.error("Register: Failed to register. Check console for error");
         }
-
+        await window.electron.createDB();
         await loginRequest(values);
     };
 
@@ -100,7 +100,7 @@ export const Login = ({setLoggedIn, setUserId, setUsername }) => {
                             <FormItem>
                                 <FormLabel>Username</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Username" {...field} />
+                                    <Input placeholder="Username" {...field} ref={usernameRef}/>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

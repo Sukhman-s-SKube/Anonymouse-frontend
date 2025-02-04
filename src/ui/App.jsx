@@ -8,6 +8,8 @@ import { HomePage } from '@/Pages/HomePage';
 import './App.css';
 import './wasm_exec.js';
 
+const apiroot = 'https://se4450.duckdns.org/api';
+
 const App = () => {
   
   const [isWasmLoaded, setIsWasmLoaded] = useState(false);
@@ -32,8 +34,8 @@ const App = () => {
     <HashRouter>
       <Toaster position='top-center' richColors />
       <Routes>
-        <Route path='/' element={<Login setLoggedIn={setLoggedIn} setUserId={setUserId} setUsername={setUsername} />} />
-        <Route path='/home' element={<HomePage loggedIn={loggedIn} username={username} userId={userId} />} />
+        <Route path='/' element={<Login setLoggedIn={setLoggedIn} setUserId={setUserId} setUsername={setUsername} apiroot={apiroot}/>} />
+        <Route path='/home' element={<HomePage loggedIn={loggedIn} username={username} userId={userId} apiroot={apiroot}/>} />
       </Routes>
     </HashRouter>
   );

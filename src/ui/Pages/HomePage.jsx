@@ -4,20 +4,21 @@ import { io } from "socket.io-client";
 import axios from "axios";
 import { toast } from 'sonner';
 
+import { generateDHKeys } from "@/Logic/WasmFunctions";
+import { getChatroomsRequest } from "@/Logic/HomePageHelper";
+
 import { Chatroom } from "@/Components/Chatroom/Chatroom"
 import { Sidebar } from "@/Components/Sidebar/Sidebar"
 import { Button } from "@/Components/ui/button";
-import { generateDHKeys } from "@/WasmFunctions";
 import { NewChat } from "@/Components/Sidebar/NewChat";
 
-const apiroot = 'https://se4450.duckdns.org/api';
-
-export const HomePage = ({ loggedIn, username, userId }) => {
+export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     const [socket, setSocket] = useState();
     const [chatrooms, setChatrooms] = useState([]);
     const [currChatroom, setCurrChatroom] = useState();
     const [msgNotifs, setMsgNotifs] = useState({});
-    const [addNewChat, setAddNewChat] = useState(false);
+    const [addNewChatToggle, setAddNewChatToggle] = useState(false);
+    const [newChatMembers, setNewChatMembers] = useState([]);
 
     useEffect(() => {
         async function setupSocket() {
@@ -48,7 +49,7 @@ export const HomePage = ({ loggedIn, username, userId }) => {
                 let keys = await window.electron.getKeys(numKeys);
                 
                 await sendDHKeysRequest(keys)
-                await getChatroomsRequest(socket)
+                await getChatroomsRequest(socket, setChatrooms, apiroot)
             });
         }
     }, [socket]);
@@ -61,31 +62,31 @@ export const HomePage = ({ loggedIn, username, userId }) => {
                     Authorization: sessionStorage.getItem("JWT"),
                 },
             });
-        } catch(err) {
+        } catch(newChatMemberserr) {
             console.log(err);
             return toast.error("Gen Keys: Failed to send keys to server. Check console for error");
         }
     };
 
-    const getChatroomsRequest = async (soc) => {
-        let response;
-        try {
-            response = await axios.get(`${apiroot}/chatroom`, {
-                headers: {
-                    Authorization: sessionStorage.getItem("JWT"),
-                },
-            });
-        } catch(err) {
-            toast.error("Error getting chatrooms. Check Console");
-            console.log(err);
-            return;
-        }
+    // const getChatroomsRequest = async (soc) => {
+    //     let response;
+    //     try {
+    //         response = await axios.get(`${apiroot}/chatroom`, {
+    //             headers: {
+    //                 Authorization: sessionStorage.getItem("JWT"),
+    //             },
+    //         });
+    //     } catch(err) {
+    //         toast.error("Error getting chatrooms. Check Console");
+    //         console.log(err);
+    //         return;
+    //     }
 
-        setChatrooms(response.data);
-        for (let room of response.data) {
-            soc.emit("joinRoom", { "chatroomId": room._id });
-        }
-    }
+    //     setChatrooms(response.data);
+    //     for (let room of response.data) {
+    //         soc.emit("joinRoom", { "chatroomId": room._id });
+    //     }
+    // }
 
     const logout = () => {
         socket.disconnect();
@@ -97,9 +98,9 @@ export const HomePage = ({ loggedIn, username, userId }) => {
 
     return(
         <div className="flex flex-row h-screen bg-slate-50 text-neutral-800 relative overflow-hidden">
-            <NewChat isOpen={addNewChat} toggle={setAddNewChat} apiroot={apiroot}/>
-            <Sidebar username={username} chatrooms={chatrooms} setCurrChatroom={setCurrChatroom} msgNotifs={msgNotifs} setAddNewChat={setAddNewChat}/>
-            <Chatroom chatroom={currChatroom} userId={userId} socket={socket} setMsgNotifs={setMsgNotifs} />
+            <NewChat isOpen={addNewChatToggle} toggle={setAddNewChatToggle} apiroot={apiroot} setNewChatMembers={setNewChatMembers}/>
+            <Sidebar username={username} chatrooms={chatrooms} setCurrChatroom={setCurrChatroom} msgNotifs={msgNotifs} setAddNewChat={setAddNewChatToggle}/>
+            <Chatroom chatroom={currChatroom} userId={userId} socket={socket} setMsgNotifs={setMsgNotifs} apiroot={apiroot}/>
             {/* <Button onClick={test}></Button> */}
             <Button className="fixed top-[10px] right-[10px] py-[1px] px-[10px] bg-red-600 hover:bg-red-700" onClick={logout}><Link to="/">Log out</Link></Button>
         </div>

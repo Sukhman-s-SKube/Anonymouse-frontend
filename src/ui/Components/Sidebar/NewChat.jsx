@@ -16,7 +16,7 @@ import { Input } from '@/Components/ui/input';
 import { toast } from 'sonner';
 import { Button } from '@/Components/ui/button';
 
-export const NewChat = ({ isOpen, toggle, apiroot }) => {
+export const NewChat = ({ isOpen, toggle, apiroot, setNewChatMembers }) => {
     const searchInputRef = useRef(null);
     const [usernames, setUsernames] = useState([]);
 
@@ -52,7 +52,7 @@ export const NewChat = ({ isOpen, toggle, apiroot }) => {
                 return toast.error("User not found");
             }
         }
-        setUsernames(response.data)
+        setUsernames(response.data);
     }
   
     return (
