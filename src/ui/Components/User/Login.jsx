@@ -17,7 +17,7 @@ import {
     FormMessage,
 } from '@/Components/ui/form';
 import { Input } from '@/Components/ui/input';
-import { ToggleContainer, ToggleBtn, ToggleBtnBg } from '@/Components/user/Login.styles';
+import { ToggleContainer, ToggleBtn, ToggleBtnBg } from '@/Components/User/Login.styles';
 
 import { formSchema } from './FormSchema';
 
