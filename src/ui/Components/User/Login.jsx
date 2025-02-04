@@ -21,7 +21,7 @@ import { ToggleContainer, ToggleBtn, ToggleBtnBg } from '@/Components/user/Login
 
 import { formSchema } from './FormSchema';
 
-const apiroot = 'http://localhost:8000/api';
+const apiroot = 'https://se4450.duckdns.org/api';
 
 const parseJwt = (token) => {
     const base64Url = token.split('.')[1]; // Get the payload part of the token

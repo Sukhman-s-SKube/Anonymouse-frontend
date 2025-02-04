@@ -18,7 +18,7 @@ import {
 import { Input } from '@/Components/ui/input';
 import { Message } from '@/Components/Message/Message';
 
-const apiroot = 'http://localhost:8000/api';
+const apiroot = 'https://se4450.duckdns.org/api';
 
 
 export const formSchema = z.object({
