@@ -66,7 +66,6 @@ export const NewChat = ({ isOpen, toggle, apiroot, setNewChatCreated, setCurrCha
         try {
             response = await axios.post(`${apiroot}/chatroom`, {
                 name: selectedUser.username,
-                description: "Chat",
                 members: [selectedUser._id]
             }, {
                 headers: {
