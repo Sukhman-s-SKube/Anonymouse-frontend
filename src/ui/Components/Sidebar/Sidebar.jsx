@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { MdOutlineAddBox } from "react-icons/md";
 import { Button } from "@/Components/ui/button";
 
-export const Sidebar = ({ username, chatrooms, msgNotifs, setCurrChatroom, setAddNewChat }) => {
+export const Sidebar = ({ username, chatrooms, msgNotifs, currChatroom, setCurrChatroom, setAddNewChat }) => {
     
 
     return(
@@ -15,7 +15,7 @@ export const Sidebar = ({ username, chatrooms, msgNotifs, setCurrChatroom, setAd
             </div>
             <div className="mt-[5px]">
                 {chatrooms == null || chatrooms.length == 0 ? 'No chatrooms to show' : chatrooms.map((room) => (
-                    <Button variant="inverse" className={`w-full my-[10px] ${msgNotifs[room._id] ? 'font-bold bg-yellow-500' : ''}`} key={room._id} onClick={() => {setCurrChatroom(room)}}>{room.name}</Button>
+                    <Button variant={currChatroom == room ? "selected" : "inverse"} className={`w-full my-[10px] ${msgNotifs[room._id] ? 'font-bold bg-yellow-500' : ''}`} key={room._id} onClick={() => {setCurrChatroom(room)}}>{room.name}</Button>
                 ))}
             </div>
         </div>
