@@ -33,14 +33,7 @@ ipcMain.handle("createDB", async (event, args) => {
     const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
     db.pragma('journal_mode = WAL');
     // db.pragma(`rekey='${args[0]}'`);
-    db.close();
-});
-
-ipcMain.handle("createDHTable", async (event, args) => {
-    const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
-    // db.pragma(`key='${args[0]}'`);
-
-    const query = `
+    let query = `
         CREATE TABLE dh_keys (
             id INTEGER PRIMARY KEY,
             privKey STRING NOT NULL,
@@ -48,15 +41,9 @@ ipcMain.handle("createDHTable", async (event, args) => {
             )`
     ;
     db.exec(query);
-    db.close();
+    console.log(query);
 
-});
-
-ipcMain.handle("createMsgsTable", async (event, args) => {
-    const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
-    // db.pragma(`key='${args[0]}'`);
-
-    const query = `
+    query = `
         CREATE TABLE messages (
             id INTEGER PRIMARY KEY,
             mongoId STRING NOT NULL,
@@ -67,9 +54,44 @@ ipcMain.handle("createMsgsTable", async (event, args) => {
             )`
     ;
     db.exec(query);
-    db.close();
 
+    db.close();
 });
+
+// ipcMain.handle("createDHTable", async (event, args) => {
+//     const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
+//     // db.pragma(`key='${args[0]}'`);
+
+//     const query = `
+//         CREATE TABLE dh_keys (
+//             id INTEGER PRIMARY KEY,
+//             privKey STRING NOT NULL,
+//             pubKey STRING NOT NULL
+//             )`
+//     ;
+//     db.exec(query);
+//     db.close();
+
+// });
+
+// ipcMain.handle("createMsgsTable", async (event, args) => {
+//     const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));
+//     // db.pragma(`key='${args[0]}'`);
+
+//     const query = `
+//         CREATE TABLE messages (
+//             id INTEGER PRIMARY KEY,
+//             mongoId STRING NOT NULL,
+//             chatroom STRING NOT NULL,
+//             sender STRING NOT NULL,
+//             content STRING NOT NULL,
+//             timestamp STRING NOT NULL
+//             )`
+//     ;
+//     db.exec(query);
+//     db.close();
+
+// });
 
 ipcMain.handle("insertMsg", async (event, msg) => {
     const db = new database(path.join(isDev ? app.getAppPath() : app.getPath("userData"), 'app.db'));

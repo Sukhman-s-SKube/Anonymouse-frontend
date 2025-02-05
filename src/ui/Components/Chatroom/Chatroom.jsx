@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 
 import '@/Components/Chatroom/Chatroom.css'
-import { encryptMsg, decryptMsg } from '@/WasmFunctions';
+import { encryptMsg, decryptMsg } from '@/Logic/WasmFunctions';
 
 import { Button } from '@/Components/ui/button';
 import { 
@@ -18,14 +18,12 @@ import {
 import { Input } from '@/Components/ui/input';
 import { Message } from '@/Components/Message/Message';
 
-const apiroot = 'http://localhost:8000/api';
-
 
 export const formSchema = z.object({
     msg: z.string().min(1),
 });
 
-export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs }) => {
+export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newChatMembers }) => {
     const [messages, setMessages] = useState([]);
     const [chatMember, setChatMember] = useState("");
     const outMsgKeys = useRef({});
@@ -210,7 +208,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs }) => {
                 ))}
                 <div ref={chatBottom}/>
             </div>
-            {chatroom == null ? '' : 
+            {chatroom == null && newChatMembers?.length == 0 ? '' : 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(sendMessage)} className="flex p-5 bg-white border-solid border-t border-gray-300">
                         <FormField

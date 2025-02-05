@@ -4,22 +4,24 @@ import { io } from "socket.io-client";
 import axios from "axios";
 import { toast } from 'sonner';
 
+import { generateDHKeys } from "@/Logic/WasmFunctions";
+
 import { Chatroom } from "@/Components/Chatroom/Chatroom"
 import { Sidebar } from "@/Components/Sidebar/Sidebar"
 import { Button } from "@/Components/ui/button";
-import { generateDHKeys } from "@/WasmFunctions";
+import { NewChat } from "@/Components/Sidebar/NewChat";
 
-const apiroot = 'http://localhost:8000/api';
-
-export const HomePage = ({ loggedIn, username, userId }) => {
+export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     const [socket, setSocket] = useState();
     const [chatrooms, setChatrooms] = useState([]);
     const [currChatroom, setCurrChatroom] = useState();
     const [msgNotifs, setMsgNotifs] = useState({});
+    const [addNewChatToggle, setAddNewChatToggle] = useState(false);
+    const [newChatCreated, setNewChatCreated] = useState(false);
 
     useEffect(() => {
         async function setupSocket() {
-            let tempSoc = await io("http://localhost:8000", {
+            let tempSoc = await io("https://se4450.duckdns.org/", {
                     extraHeaders: {
                         Authorization: sessionStorage.getItem("JWT"),
                     }
@@ -50,6 +52,16 @@ export const HomePage = ({ loggedIn, username, userId }) => {
             });
         }
     }, [socket]);
+
+    useEffect(() => {
+        async function refreshSideBar() {
+            if (newChatCreated) {
+                await getChatroomsRequest(socket);
+                setNewChatCreated(false);
+            }
+        };
+        refreshSideBar();
+    }, [newChatCreated]);
 
     const sendDHKeysRequest = async (keys) => {
         let response;
@@ -89,10 +101,15 @@ export const HomePage = ({ loggedIn, username, userId }) => {
         socket.disconnect();
     }
 
+    const test = () => {
+        console.log(addNewChat);
+    }
+
     return(
         <div className="flex flex-row h-screen bg-slate-50 text-neutral-800 relative overflow-hidden">
-            <Sidebar username={username} chatrooms={chatrooms} setCurrChatroom={setCurrChatroom} msgNotifs={msgNotifs}/>
-            <Chatroom chatroom={currChatroom} userId={userId} socket={socket} setMsgNotifs={setMsgNotifs} />
+            <NewChat isOpen={addNewChatToggle} toggle={setAddNewChatToggle} apiroot={apiroot} setNewChatCreated={setNewChatCreated} setCurrChatroom={setCurrChatroom} />
+            <Sidebar username={username} chatrooms={chatrooms} currChatroom={currChatroom} setCurrChatroom={setCurrChatroom} msgNotifs={msgNotifs} setAddNewChat={setAddNewChatToggle}/>
+            <Chatroom chatroom={currChatroom} userId={userId} socket={socket} setMsgNotifs={setMsgNotifs} apiroot={apiroot}/>
             {/* <Button onClick={test}></Button> */}
             <Button className="fixed top-[10px] right-[10px] py-[1px] px-[10px] bg-red-600 hover:bg-red-700" onClick={logout}><Link to="/">Log out</Link></Button>
         </div>
