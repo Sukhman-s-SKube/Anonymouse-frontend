@@ -46,12 +46,26 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         if (socket != null && chatroom != null) {
             getMessages();
             socketNewMsg();
-            console.log(chatroom);
         }
     }, [socket, chatroom]);
 
-    const addMessage = async (msg) => {
-        await window.electron.insertMsg(msg);
+    const readMsgReq = async (msgIds) => {
+        let response;
+        try {
+            response = await axios.put(`${apiroot}/message/read`, {
+                message_ids: msgIds
+            }, {
+                headers: {
+                    Authorization: sessionStorage.getItem("JWT"),
+                }
+            });
+        } catch(err) {
+            console.log(err);
+            return toast.error("Msg In: Check console for error");
+        }
+    }
+
+    const displayMsg = async (msg) => {
         let parsedMsg = await window.electron.getMsg(msg._id);
 
         if (msg.chatroom === chatroom._id) {
@@ -59,7 +73,28 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
             setTimeout(() => {
                 chatBottom.current.scrollIntoView({ behaviour: 'smooth' });
             }, 10);
+            return;
         }
+        setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [msg.chatroom]: true}));
+        return;
+    };
+
+    const parseMessage = async (msg) => {
+        let myKey;
+        try {
+            myKey = await window.electron.getDHKey(parseInt(msg.message.privKeyId));
+        } catch(err) {
+            console.log(err);
+            return toast.error("Msg In: Key not found. Check console for error");
+        }
+
+        let res = await decryptMsg(msg.message.content, msg.message.timestamp, msg.message.pubKey, myKey.privKey);
+        if (res["error"] != "") {
+            console.log(res["error"]);
+            return toast.error("Msg In: Failed to decrypt msg. Check console for error");
+        }
+        msg.message.content = res["plainText"];
+        await window.electron.insertMsg(msg);
     };
 
     const handleMsgIn = async (data) => {
@@ -74,24 +109,15 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         
                 delete outMsgKeys.current[hash];
                 data.message.content = res["plainText"];
-                await addMessage(data);
+                await window.electron.insertMsg(data);
             }
-            return;
+        }
+        else {
+            await parseMessage(data);
         }
         
-        let myKey = await electron.getDHKey(parseInt(data.message.privKeyId));
-
-        let res = await decryptMsg(data.message.content, data.message.timestamp, data.message.pubKey, myKey.privKey);
-        if (res["error"] != "") {
-            console.log(res["error"]);
-            return toast.error("Msg In: Failed to decrypt msg. Check console for error");
-        }
-        data.message.content = res["plainText"];
-        if (data.chatroom != chatroom._id) {
-            setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true}));
-            return;
-        }
-        await addMessage(data)
+        await displayMsg(data);
+        await readMsgReq([data._id]);
     };
 
     const getMessages = async () => {
@@ -117,27 +143,18 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         } catch(err) {
             toast.error("Error getting messages. Check Console");
             console.log(err);
-            setMessages([]);
-            return;
         }
 
-        const currentChat = response.data;
-        let storedChat = await window.electron.getMsgs(chatroom._id);
-
-        if (currentChat.length > storedChat.length) {
-            for (let i = storedChat.length; i < currentChat.length; i++) {
-              let myKey = await window.electron.getDHKey(parseInt(currentChat[i].message.privKeyId));
-    
-              let res = await decryptMsg(currentChat[i].message.content, currentChat[i].message.timestamp, currentChat[i].message.pubKey, myKey.privKey);
-              if (res["error"] != "") {
-                console.log(res["error"]);
-                return toast.error("Msg In: Failed to decrypt msg. Check console for error");
-              }
-              currentChat[i].message.content = res["plainText"];
-              await window.electron.insertMsg(currentChat[i]);
-              currentChat[i] = {};
+        let msgIds = [];
+        if (response.data.length > 0) {
+            for (let i = 0; i < response.data.length; i++) {
+                try {
+                    await parseMessage(response.data[i]);
+                    msgIds.push(response.data[i]._id);
+                } catch {}
             }
-          }
+            await readMsgReq(msgIds);
+        }
 
         let finalChat = await window.electron.getMsgs(chatroom._id);
         setMessages(finalChat);
