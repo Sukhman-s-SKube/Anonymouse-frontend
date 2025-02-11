@@ -50,29 +50,48 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         }
     }, [socket, chatroom]);
 
-    const addMessage = async (msg) => {
-        await window.electron.insertMsg(msg);
-        let parsedMsg = await window.electron.getMsg(msg._id);
-
-        if (msg.chatroom === chatroom._id) {
-            setMessages((prevMsgs) => [...prevMsgs, parsedMsg]);
+    const addMessage = async (data) => {
+        await window.electron.insertMsg(data);
+        let confirmedMsg = await window.electron.getMsg(data._id);
+    
+        if (data.chatroom === chatroom._id) {
+            setMessages((prevMsgs) => {
+                const index = prevMsgs.findIndex(
+                    (msg) => msg.hash === data.message.hash && msg.pending === true
+                );
+                if (index !== -1) {
+                    const updatedMsg = { ...confirmedMsg, pending: false };
+                    const newMsgs = [...prevMsgs];
+                    newMsgs[index] = updatedMsg;
+                    return newMsgs;
+                } else {
+                    return [...prevMsgs, confirmedMsg];
+                }
+            });
             setTimeout(() => {
-                chatBottom.current.scrollIntoView({ behaviour: 'smooth' });
+                chatBottom.current.scrollIntoView({ behaviour: "smooth" });
             }, 10);
         }
     };
 
     const handleMsgIn = async (data) => {
         if (data.sender === userId) {
-            let hash = await window.electron.sha256(data.message.content + data.message.pubKey + data.message.timestamp);
+            let hash = await window.electron.sha256(
+                data.message.content + data.message.pubKey + data.message.timestamp
+            );
             if (outMsgKeys.current[hash]) {
-                let res = await decryptMsg(data.message.content, data.message.timestamp, outMsgKeys.current[hash], "");
+                let res = await decryptMsg(
+                    data.message.content,
+                    data.message.timestamp,
+                    outMsgKeys.current[hash],
+                    ""
+                );
                 if (res["error"] != "") {
                     console.log(res["error"]);
                     return toast.error("Msg In: Failed to decrypt msg. Check console for error");
                 }
-        
                 delete outMsgKeys.current[hash];
+                data.message.hash = hash;
                 data.message.content = res["plainText"];
                 await addMessage(data);
             }
@@ -80,19 +99,24 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         }
         
         let myKey = await electron.getDHKey(parseInt(data.message.privKeyId));
-
-        let res = await decryptMsg(data.message.content, data.message.timestamp, data.message.pubKey, myKey.privKey);
+        let res = await decryptMsg(
+            data.message.content,
+            data.message.timestamp,
+            data.message.pubKey,
+            myKey.privKey
+        );
         if (res["error"] != "") {
             console.log(res["error"]);
             return toast.error("Msg In: Failed to decrypt msg. Check console for error");
         }
         data.message.content = res["plainText"];
         if (data.chatroom != chatroom._id) {
-            setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true}));
+            setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true }));
             return;
         }
-        await addMessage(data)
+        await addMessage(data);
     };
+    
 
     const getMessages = async () => {
         if (chatroom == null) {
@@ -160,7 +184,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         } catch (err) {
             toast.error("Sending Msg: Failed to get other user's key. Check console for error");
             console.log(err);
-            return
+            return;
         }
 
         const otherPubDH = response.data.popped_key.pubKey;
@@ -171,7 +195,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         if (encData["error"] != "") {
             toast.error("Sending Msg: Failed to encrypt message. Check console for error");
             console.log(encData["error"]);
-            return
+            return;
         }
     
         let payload = {
@@ -185,6 +209,18 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         let val = {};
         val[`${hash}`] = encData["masterSec"];
         outMsgKeys.current = {...outMsgKeys.current, ...val};
+
+        const pendingMessage = {
+            _id: "pending_" + new Date().getTime(), 
+            content: values.msg, 
+            sender: userId,
+            pending: true,
+            timestamp: timestamp.toJSON(),
+            hash: hash,
+            chatroom: chatroom._id,
+        };
+
+        setMessages((prevMessages) => [...prevMessages, pendingMessage]);
 
         socket.emit("chatroomMessage", {
             "chatroomId": chatroom._id,
@@ -204,7 +240,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
             <h1 className="text-center text-4xl font-bold mb-10 text-green-600">Chatroom</h1>
             <div className="flex-1 overflow-y-scroll p-5 box-border">
                 {messages == null || messages.length == 0 ? 'No chats to show' : messages.map((msg) => (
-                    <Message content={msg.content} isSender={msg.sender == userId} key={msg.mongoId}/>
+                    <Message content={msg.content} isSender={msg.sender == userId} key={msg.mongoId} pending={msg.pending}/>
                 ))}
                 <div ref={chatBottom}/>
             </div>
