@@ -8,11 +8,11 @@ export const Wrapper = styled.div`
     width: 90%;
     height: 100%;
     max-width: 20rem;
-    background-color: #008235;
+    background-color: ${({ theme }) => theme.greenBackground};
     padding: 1.25rem;
     justify-content: center;
     align-items: center;
-    color: ${({ theme }) => theme.newChatText};
+    color: ${({ theme }) => theme.newChatText || "#fff"};
     font-size: 20px;
     transition: left 0.5s ease-in-out;
 `;

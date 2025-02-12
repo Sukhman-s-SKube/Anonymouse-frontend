@@ -120,7 +120,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
 
     return (
         <ThemeProvider theme={currentTheme}>
-          <div className="flex flex-row h-screen bg-slate-50 text-neutral-800 relative overflow-hidden">
+          <div className={`flex flex-row h-screen relative overflow-hidden ${darkMode ? 'dark' : ''}`}>
             <NewChat
               isOpen={addNewChatToggle}
               toggle={setAddNewChatToggle}
@@ -179,4 +179,5 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
           </div>
         </ThemeProvider>
       );
+      
     };
