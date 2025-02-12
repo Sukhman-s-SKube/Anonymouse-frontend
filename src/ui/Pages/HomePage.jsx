@@ -10,6 +10,7 @@ import { Chatroom } from "@/Components/Chatroom/Chatroom"
 import { Sidebar } from "@/Components/Sidebar/Sidebar"
 import { Button } from "@/Components/ui/button";
 import { NewChat } from "@/Components/Sidebar/NewChat";
+import { ChatNotifications } from "@/Components/Notifications/ChatNotifications";
 
 export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     const [socket, setSocket] = useState();
@@ -111,6 +112,15 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
             <Sidebar username={username} chatrooms={chatrooms} currChatroom={currChatroom} setCurrChatroom={setCurrChatroom} msgNotifs={msgNotifs} setAddNewChat={setAddNewChatToggle}/>
             <Chatroom chatroom={currChatroom} userId={userId} socket={socket} setMsgNotifs={setMsgNotifs} apiroot={apiroot}/>
             {/* <Button onClick={test}></Button> */}
+            {socket && (
+                <ChatNotifications
+                socket={socket}
+                userId={userId}
+                currentChatroomId={currChatroom ? currChatroom._id : undefined}
+                chatrooms={chatrooms}
+                setMsgNotifs={setMsgNotifs}
+                />
+            )}
             <Button className="fixed top-[10px] right-[10px] py-[1px] px-[10px] bg-red-600 hover:bg-red-700" onClick={logout}><Link to="/">Log out</Link></Button>
         </div>
     )

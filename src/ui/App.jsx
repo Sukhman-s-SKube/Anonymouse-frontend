@@ -8,6 +8,7 @@ import { HomePage } from '@/Pages/HomePage';
 import './App.css';
 import './wasm_exec.js';
 
+
 const apiroot = 'https://se4450.duckdns.org/api';
 
 const App = () => {

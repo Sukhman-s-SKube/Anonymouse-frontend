@@ -238,16 +238,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
 
     return(
         <div className="chatroom">
-            {chatroom && (
-                <ChatNotifications 
-                socket={socket}
-                userId={userId}
-                currentChatroomId={chatroom._id}
-                chatrooms={chatrooms || []}
-                setMsgNotifs={setMsgNotifs}
-            />
-            )}
-
             <h1 className="text-center text-4xl font-bold mb-10 text-green-600">Chatroom</h1>
             <div className="flex-1 overflow-y-scroll p-5 box-border">
                 {messages == null || messages.length == 0 ? 'No chats to show' : messages.map((msg) => (
