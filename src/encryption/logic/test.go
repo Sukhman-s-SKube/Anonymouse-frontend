@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"encoding/base64"
+	"encoding/hex"
 	"crypto/sha256"
 	"hash"
 	"io"
@@ -17,6 +19,8 @@ func main() {
 
 	for i := range keys {
 		fmt.Println(keys[i]) //byte array
+		fmt.Println(b16(keys[i])) //hex representation
+		fmt.Println(b64(keys[i])) //base64 representation
 	}
 
 }
@@ -37,4 +41,10 @@ func hkdf_output (numKeys int, keySize int, hash func() hash.Hash, secret, salt,
 	return keys
 }
 
+func b16(msg []byte) string {
+	return hex.EncodeToString(msg)
+}
+func b64(msg []byte) string {
+	return base64.StdEncoding.EncodeToString(msg)
+}
 
