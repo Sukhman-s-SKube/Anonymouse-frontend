@@ -11,6 +11,7 @@ import { Sidebar } from "@/Components/Sidebar/Sidebar"
 import { Button } from "@/Components/ui/button";
 import { NewChat } from "@/Components/Sidebar/NewChat";
 import { ChatNotifications } from "@/Components/Notifications/ChatNotifications";
+import { SettingsModal } from "@/Components/Settings/SettingsModal";
 
 export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     const [socket, setSocket] = useState();
