@@ -13,6 +13,10 @@ import { NewChat } from "@/Components/Sidebar/NewChat";
 import { ChatNotifications } from "@/Components/Notifications/ChatNotifications";
 import { SettingsModal } from "@/Components/Settings/SettingsModal";
 
+import { ThemeProvider } from "styled-components";
+import { lightTheme, darkTheme } from "@/Components/ui/themes"; 
+
+
 export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     const [socket, setSocket] = useState();
     const [chatrooms, setChatrooms] = useState([]);
@@ -20,6 +24,13 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     const [msgNotifs, setMsgNotifs] = useState({});
     const [addNewChatToggle, setAddNewChatToggle] = useState(false);
     const [newChatCreated, setNewChatCreated] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
+    const [darkMode, setDarkMode] = useState(false);
+    const currentTheme = darkMode ? darkTheme : lightTheme;
+
+    const toggleDarkMode = () => {
+        setDarkMode((prevMode) => !prevMode);
+      };
 
     useEffect(() => {
         async function setupSocket() {
@@ -107,22 +118,65 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
         console.log(addNewChat);
     }
 
-    return(
-        <div className="flex flex-row h-screen bg-slate-50 text-neutral-800 relative overflow-hidden">
-            <NewChat isOpen={addNewChatToggle} toggle={setAddNewChatToggle} apiroot={apiroot} setNewChatCreated={setNewChatCreated} setCurrChatroom={setCurrChatroom} />
-            <Sidebar username={username} chatrooms={chatrooms} currChatroom={currChatroom} setCurrChatroom={setCurrChatroom} msgNotifs={msgNotifs} setAddNewChat={setAddNewChatToggle}/>
-            <Chatroom chatroom={currChatroom} userId={userId} socket={socket} setMsgNotifs={setMsgNotifs} apiroot={apiroot}/>
-            {/* <Button onClick={test}></Button> */}
+    return (
+        <ThemeProvider theme={currentTheme}>
+          <div className="flex flex-row h-screen bg-slate-50 text-neutral-800 relative overflow-hidden">
+            <NewChat
+              isOpen={addNewChatToggle}
+              toggle={setAddNewChatToggle}
+              apiroot={apiroot}
+              setNewChatCreated={setNewChatCreated}
+              setCurrChatroom={setCurrChatroom}
+            />
+            <Sidebar
+              username={username}
+              chatrooms={chatrooms}
+              currChatroom={currChatroom}
+              setCurrChatroom={(room) => {
+                setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
+                setCurrChatroom(room);
+              }}
+              msgNotifs={msgNotifs}
+              setAddNewChat={setAddNewChatToggle}
+            />
+            <Chatroom
+              chatroom={currChatroom}
+              userId={userId}
+              socket={socket}
+              setMsgNotifs={setMsgNotifs}
+              apiroot={apiroot}
+            />
             {socket && (
-                <ChatNotifications
+              <ChatNotifications
                 socket={socket}
                 userId={userId}
                 currentChatroomId={currChatroom ? currChatroom._id : undefined}
                 chatrooms={chatrooms}
                 setMsgNotifs={setMsgNotifs}
-                />
+              />
             )}
-            <Button className="fixed top-[10px] right-[10px] py-[1px] px-[10px] bg-red-600 hover:bg-red-700" onClick={logout}><Link to="/">Log out</Link></Button>
-        </div>
-    )
-};
+            <div className="fixed top-[10px] right-[10px] flex gap-2">
+              <Button
+                className="py-[1px] px-[10px] bg-blue-600 hover:bg-blue-700"
+                onClick={() => setShowSettings(true)}
+              >
+                Settings
+              </Button>
+              <Button
+                className="py-[1px] px-[10px] bg-red-600 hover:bg-red-700"
+                onClick={() => socket.disconnect()}
+              >
+                <Link to="/">Log out</Link>
+              </Button>
+            </div>
+            {showSettings && (
+              <SettingsModal
+                onClose={() => setShowSettings(false)}
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+              />
+            )}
+          </div>
+        </ThemeProvider>
+      );
+    };

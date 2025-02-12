@@ -12,7 +12,7 @@ export const Wrapper = styled.div`
     padding: 1.25rem;
     justify-content: center;
     align-items: center;
-    color: white;
+    color: ${({ theme }) => theme.newChatText};
     font-size: 20px;
     transition: left 0.5s ease-in-out;
 `;

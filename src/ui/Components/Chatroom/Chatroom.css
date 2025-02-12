@@ -7,3 +7,14 @@
     height: 100%;
     background-color: #f9f9f9;
 }
+
+/* Chatroom.css */
+.chatroom {
+    background-color: #f9f9f9;
+  }
+  
+  /* When dark mode is active, assuming the top-level container has dark-mode class */
+  .dark .chatroom {
+    background-color: #1a1a1a;
+    color: #f0f0f0;
+  }
