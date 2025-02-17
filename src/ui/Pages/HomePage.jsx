@@ -175,6 +175,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
                 onClose={() => setShowSettings(false)}
                 darkMode={darkMode}
                 toggleDarkMode={toggleDarkMode}
+                apiroot={apiroot}
               />
             )}
           </div>

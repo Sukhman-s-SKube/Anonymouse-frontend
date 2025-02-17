@@ -1,4 +1,3 @@
-// SettingsModal.jsx
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
@@ -74,8 +73,7 @@ const SubmitButton = styled.button`
   }
 `;
 
-export const SettingsModal = ({ onClose, darkMode, toggleDarkMode }) => {
-  // State for password change inputs and error/loading feedback
+export const SettingsModal = ({ onClose, darkMode, toggleDarkMode, apiroot }) => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -85,7 +83,6 @@ export const SettingsModal = ({ onClose, darkMode, toggleDarkMode }) => {
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     
-    // Validate the new passwords match
     if (newPassword !== confirmPassword) {
       setError("New passwords do not match.");
       return;
@@ -95,10 +92,8 @@ export const SettingsModal = ({ onClose, darkMode, toggleDarkMode }) => {
     setLoading(true);
     
     try {
-      // Make an API call to update the password.
-      // Adjust the URL and payload to match your backend's API.
       const response = await axios.post(
-        '/api/user/change-password',
+        `${apiroot}/user/change-password`,
         {
           currentPassword,
           newPassword,
@@ -112,7 +107,6 @@ export const SettingsModal = ({ onClose, darkMode, toggleDarkMode }) => {
       
       toast.success("Password changed successfully.");
       
-      // Optionally, clear the fields or close the modal
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
