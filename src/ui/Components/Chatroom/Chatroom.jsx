@@ -174,6 +174,19 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
 
     const sendMessage = async (values) => {
         let response;
+        const timestamp = new Date();
+
+        const pendingMessage = {
+            _id: "pending_" + new Date().getTime(), 
+            content: values.msg, 
+            sender: userId,
+            pending: true,
+            timestamp: timestamp.toJSON(),
+            hash: hash,
+            chatroom: chatroom._id,
+        };
+
+        setMessages((prevMessages) => [...prevMessages, pendingMessage]);
 
         try {
             response = await axios.delete(`${apiroot}/user/dh_keys/${chatMember}`, {
@@ -189,7 +202,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
 
         const otherPubDH = response.data.popped_key.pubKey;
         const otherPubDHId = response.data.popped_key.id; 
-        const timestamp = new Date();
         
         let encData = await encryptMsg(otherPubDH, values.msg, timestamp.toJSON());
         if (encData["error"] != "") {
@@ -209,18 +221,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         let val = {};
         val[`${hash}`] = encData["masterSec"];
         outMsgKeys.current = {...outMsgKeys.current, ...val};
-
-        const pendingMessage = {
-            _id: "pending_" + new Date().getTime(), 
-            content: values.msg, 
-            sender: userId,
-            pending: true,
-            timestamp: timestamp.toJSON(),
-            hash: hash,
-            chatroom: chatroom._id,
-        };
-
-        setMessages((prevMessages) => [...prevMessages, pendingMessage]);
 
         socket.emit("chatroomMessage", {
             "chatroomId": chatroom._id,

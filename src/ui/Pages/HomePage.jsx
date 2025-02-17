@@ -28,9 +28,23 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     const [darkMode, setDarkMode] = useState(false);
     const currentTheme = darkMode ? darkTheme : lightTheme;
 
+    useEffect(() => {
+      const storedPreference = localStorage.getItem('darkMode');
+      if (storedPreference === 'true') {
+        setDarkMode(true);
+      } else {
+        setDarkMode(false);
+      }
+    }, []);
+    
+
     const toggleDarkMode = () => {
-        setDarkMode((prevMode) => !prevMode);
-      };
+      setDarkMode((prevMode) => {
+        const newMode = !prevMode;
+        localStorage.setItem('darkMode', newMode ? 'true' : 'false');
+        return newMode;
+      });
+    };
 
     useEffect(() => {
         async function setupSocket() {
