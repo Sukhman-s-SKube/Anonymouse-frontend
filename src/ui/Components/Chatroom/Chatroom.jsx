@@ -259,8 +259,12 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
                                 </FormItem>
                             )}
                         />
-                        <Button type="submit" className="text-base">Send</Button>
-                        {/* <Button onClick={test}>Test</Button> */}
+                        <Button 
+                            type="submit" 
+                            className="text-base bg-[#f9f9f9] dark:bg-[#262626] border border-gray-300 dark:border-gray-700 text-black dark:text-white"
+                            >
+                            Send
+                            </Button>
                     </form>
                 </Form>
             }

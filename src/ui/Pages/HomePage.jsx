@@ -173,13 +173,13 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
             )}
             <div className="fixed top-[10px] right-[10px] flex gap-2">
               <Button
-                className="py-[1px] px-[10px] bg-blue-600 hover:bg-blue-700"
+                variant="settings"
                 onClick={() => setShowSettings(true)}
               >
                 Settings
               </Button>
               <Button
-                className="py-[1px] px-[10px] bg-red-600 hover:bg-red-700"
+                variant="logout"
                 onClick={() => socket.disconnect()}
               >
                 <Link to="/">Log out</Link>
