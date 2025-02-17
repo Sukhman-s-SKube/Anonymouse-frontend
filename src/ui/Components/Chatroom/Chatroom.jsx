@@ -246,7 +246,8 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
             </div>
             {chatroom == null && newChatMembers?.length == 0 ? '' : 
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(sendMessage)} className="flex p-5 bg-white border-solid border-t border-gray-300">
+                    <form onSubmit={form.handleSubmit(sendMessage)} 
+                    className="flex p-5 bg-[#f9f9f9] dark:bg-[#262626] border-solid border-t border-gray-300 dark:border-gray-700">
                         <FormField
                             control={form.control}
                             name="msg"

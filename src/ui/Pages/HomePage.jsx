@@ -153,6 +153,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
               msgNotifs={msgNotifs}
               setAddNewChat={setAddNewChatToggle}
               isNewChatOpen={addNewChatToggle}  
+              darkMode={darkMode}
             />
             <Chatroom
               chatroom={currChatroom}

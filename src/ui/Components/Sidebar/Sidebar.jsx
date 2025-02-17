@@ -8,11 +8,10 @@ export const Sidebar = ({
   currChatroom,
   setCurrChatroom,
   setAddNewChat,
-  isNewChatOpen,  // new prop
+  isNewChatOpen,  
 }) => {
   return (
     <div className="flex-auto max-w-80 bg-green-600 text-white p-5 box-border overflow-y-auto h-full shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
-      {/* Always show the container's background (green), but conditionally render the header and list */}
       {!isNewChatOpen && (
         <>
           <div className="flex justify-between">
