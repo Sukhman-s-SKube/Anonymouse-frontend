@@ -7,6 +7,7 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/sha256"
+	// "crypto/ed25519"
 	"bytes"
 	"hash"
 	"io"
@@ -86,9 +87,11 @@ func main() {
 type Person struct{
 	name string
 	IK, EK, SPK, OPK *ecdh.PrivateKey
+	prekey_signature []byte
 	dh1, dh2, dh3, dh4 []byte
 	SK [][]byte
 }
+const keySize = 32
 
 func (person *Person) keyGen(){
 	curve := ecdh.X25519()
@@ -103,7 +106,7 @@ func (person *Person) X3DH_initer(otherPerson Person){
 	person.dh2, _ = person.EK.ECDH(otherPerson.IK.PublicKey())
 	person.dh3, _ = person.EK.ECDH(otherPerson.SPK.PublicKey())
 	person.dh4, _ = person.EK.ECDH(otherPerson.OPK.PublicKey())
-	person.SK = hkdf_output(2, 32, sha256.New, append(append(append(person.dh1, person.dh2...), person.dh3...), person.dh4...), nil, nil)
+	person.SK = hkdf_output(1, 80, sha256.New, append(append(append(person.dh1, person.dh2...), person.dh3...), person.dh4...), nil, nil)
 }
 
 func (person *Person) X3DH_recer(otherPerson Person){
@@ -111,20 +114,22 @@ func (person *Person) X3DH_recer(otherPerson Person){
 	person.dh2, _ = person.IK.ECDH(otherPerson.EK.PublicKey())
 	person.dh3, _ = person.SPK.ECDH(otherPerson.EK.PublicKey())
 	person.dh4, _ = person.OPK.ECDH(otherPerson.EK.PublicKey())
-	person.SK = hkdf_output(2, 32, sha256.New, append(append(append(person.dh1, person.dh2...), person.dh3...), person.dh4...), nil, nil)
+	person.SK = hkdf_output(1, 80, sha256.New, append(append(append(person.dh1, person.dh2...), person.dh3...), person.dh4...), nil, nil)
 }
 
-func hkdf_output (numKeys int, keySize int, hash func() hash.Hash, secret, salt, info []byte) [][]byte{
+func hkdf_output (numKeys int, outputSize int, hash func() hash.Hash, secret, salt, info []byte) [][]byte{
 
-	hkdf_step :=hkdf.New(hash, secret, salt, info)
+	hkdf_step := hkdf.New(hash, secret, salt, info)
 
 	var keys [][]byte
 	for i := 0; i < numKeys; i++ {
-		key := make([]byte, keySize)
+		key := make([]byte, outputSize)
 		if _, err := io.ReadFull(hkdf_step, key); err != nil {
 			panic(err)
 		}
-		keys = append(keys, key)
+		keys = append(keys, key[:keySize])
+		keys = append(keys, key[keySize:keySize*2])
+		keys = append(keys, key[keySize*2:])
 	}
 
 	return keys
