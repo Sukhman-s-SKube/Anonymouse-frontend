@@ -8,7 +8,8 @@ export const Sidebar = ({
   currChatroom,
   setCurrChatroom,
   setAddNewChat,
-  isNewChatOpen,  
+  isNewChatOpen,
+  setMsgNotifs, 
 }) => {
   return (
     <div className="flex-auto max-w-80 bg-green-600 text-white p-5 box-border overflow-y-auto h-full shadow-[2px_0_5px_rgba(0,0,0,0.1)]">

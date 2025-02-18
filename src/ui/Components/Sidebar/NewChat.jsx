@@ -60,28 +60,31 @@ export const NewChat = ({ isOpen, toggle, apiroot, setNewChatCreated, setCurrCha
 
     const startChatReq = async () => {
         if (Object.keys(selectedUser).length === 0) 
-            return;
-
+          return;
+      
         let response;
         try {
-            response = await axios.post(`${apiroot}/chatroom`, {
-                name: selectedUser.username,
-                description: "Chat",
-                members: [selectedUser._id]
-            }, {
-                headers: {
-                    Authorization: sessionStorage.getItem("JWT"),
-                }   
-            });
-        } catch(err) {
-            console.log(err);
-            return toast.error("Chatroom could not be created.");
+          response = await axios.post(
+            `${apiroot}/chatroom`,
+            {
+              members: [selectedUser._id] 
+            },
+            {
+              headers: {
+                Authorization: sessionStorage.getItem("JWT"),
+              }
+            }
+          );
+        } catch (err) {
+          console.log(err);
+          return toast.error("Chatroom could not be created.");
         }
         console.log(response);
         setNewChatCreated(true);
         toggle(false);
         setCurrChatroom(response.data);
-    };
+      };
+      
   
     return (
         <Wrapper $isOpen={isOpen}>

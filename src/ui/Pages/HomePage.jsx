@@ -154,6 +154,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
               setAddNewChat={setAddNewChatToggle}
               isNewChatOpen={addNewChatToggle}  
               darkMode={darkMode}
+              setMsgNotifs={setMsgNotifs}
             />
             <Chatroom
               chatroom={currChatroom}

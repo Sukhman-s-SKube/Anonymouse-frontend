@@ -173,63 +173,73 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
 
 
     const sendMessage = async (values) => {
-        let response;
         const timestamp = new Date();
-
+      
+        const provisionalId = "pending_" + new Date().getTime();
+        let provisionalHash = provisionalId;
+      
         const pendingMessage = {
-            _id: "pending_" + new Date().getTime(), 
-            content: values.msg, 
-            sender: userId,
-            pending: true,
-            timestamp: timestamp.toJSON(),
-            hash: hash,
-            chatroom: chatroom._id,
+          _id: provisionalId,
+          content: values.msg,
+          sender: userId,
+          pending: true,
+          timestamp: timestamp.toJSON(),
+          hash: provisionalHash,
+          chatroom: chatroom._id,
         };
-
+      
         setMessages((prevMessages) => [...prevMessages, pendingMessage]);
-
+      
+        let response;
         try {
-            response = await axios.delete(`${apiroot}/user/dh_keys/${chatMember}`, {
-                headers: {
-                    Authorization: sessionStorage.getItem("JWT"),
-                }
-        });
+          response = await axios.delete(`${apiroot}/user/dh_keys/${chatMember}`, {
+            headers: {
+              Authorization: sessionStorage.getItem("JWT"),
+            },
+          });
         } catch (err) {
-            toast.error("Sending Msg: Failed to get other user's key. Check console for error");
-            console.log(err);
-            return;
+          toast.error("Sending Msg: Failed to get other user's key. Message remains pending.");
+          console.error(err);
+          return;
         }
-
+      
         const otherPubDH = response.data.popped_key.pubKey;
         const otherPubDHId = response.data.popped_key.id; 
-        
+      
         let encData = await encryptMsg(otherPubDH, values.msg, timestamp.toJSON());
-        if (encData["error"] != "") {
-            toast.error("Sending Msg: Failed to encrypt message. Check console for error");
-            console.log(encData["error"]);
-            return;
+        if (encData["error"] !== "") {
+          toast.error("Sending Msg: Failed to encrypt message. Message remains pending.");
+          console.log(encData["error"]);
+          return;
         }
-    
+      
         let payload = {
-            "content": encData["cipherText"],
-            "pubKey": encData["pubKey"],
-            "privKeyId": otherPubDHId.toString(),
-            "timestamp": timestamp.toJSON(),
+          content: encData["cipherText"],
+          pubKey: encData["pubKey"],
+          privKeyId: otherPubDHId.toString(),
+          timestamp: timestamp.toJSON(),
         };
-    
-        let hash = await window.electron.sha256(payload.content + payload.pubKey + payload.timestamp);
-        let val = {};
-        val[`${hash}`] = encData["masterSec"];
-        outMsgKeys.current = {...outMsgKeys.current, ...val};
+      
+        const properHash = await window.electron.sha256(payload.content + payload.pubKey + payload.timestamp);
 
+        outMsgKeys.current = { ...outMsgKeys.current, [properHash]: encData["masterSec"] };
+      
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === provisionalId ? { ...msg, hash: properHash } : msg
+          )
+        );
+      
         socket.emit("chatroomMessage", {
-            "chatroomId": chatroom._id,
-            "message": payload
+          chatroomId: chatroom._id,
+          message: payload,
         });
-
+      
         form.reset();
         msgInputRef.current.focus();
-    };
+      };
+      
+      
 
     const test = () => {
         console.log(chatroom);
