@@ -175,7 +175,11 @@ func (person *Person) sending(msg string) []byte {
 	return encryptGCM(person.send.next, person.send.iv, []byte(msg))
 }
 
+func (person *Person) recving(cipherText []byte) string {
+	person.recv.chain_ratchet_next(person.recv.state)
+	return decryptGCM(person.recv.next, person.recv.iv, cipherText)
 
+}
 
 
 func hkdf_output (numKeys int, outputSize int, hash func() hash.Hash, secret, salt, info []byte) []byte{
