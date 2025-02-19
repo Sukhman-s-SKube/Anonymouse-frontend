@@ -203,7 +203,21 @@ func hkdf_output (numKeys int, outputSize int, hash func() hash.Hash, secret, sa
 	return keys
 }
 
+func encryptGCM(key, nonce []byte, msg []byte) []byte {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil
+	}
 
+	gcm, err := cipher.NewGCMWithNonceSize(block, keySize/2)
+	if err != nil {
+		return nil
+	}
+
+	cipherText := gcm.Seal(nil, nonce, msg, nil)
+
+	return cipherText
+}
 
 
 
