@@ -149,7 +149,13 @@ func (person *Person) root_ratchet_recv(){
 	person.recv.state = person.root.next
 }
 
-
+func (person *Person) dh_ratchet_send(){
+	curve := ecdh.X25519()
+	person.myDH, _ = curve.GenerateKey(rand.Reader)
+	dhs, _ := person.myDH.ECDH(person.otherDH)
+	person.root.root_ratchet_next(dhs)
+	person.send.state = person.root.next
+}
 
 
 
