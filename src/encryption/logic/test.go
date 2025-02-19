@@ -139,7 +139,10 @@ func (person *Person) X3DH_recv(otherPerson Person){
 }
 
 
-
+func (person *Person) root_ratchet_send(){
+	person.root.root_ratchet_next(person.root.state)
+	person.send.state = person.root.next
+}
 
 
 
