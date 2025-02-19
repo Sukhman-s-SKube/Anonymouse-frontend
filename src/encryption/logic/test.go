@@ -157,7 +157,12 @@ func (person *Person) dh_ratchet_send(){
 	person.send.state = person.root.next
 }
 
-
+func (person *Person) dh_ratchet_recv(dhKey *ecdh.PublicKey){
+	person.otherDH = dhKey
+	dhs, _ := person.myDH.ECDH(person.otherDH)
+	person.root.root_ratchet_next(dhs)
+	person.recv.state = person.root.next
+}
 
 
 
