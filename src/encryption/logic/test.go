@@ -63,7 +63,7 @@ func main() {
 //working off of the SK from X3DH
 //alice send
 	alice_ciphertext1 := alice.sending("hello")
-//bob recieve
+//bob receive
 	bob_plaintext1 := bob.recving(alice_ciphertext1)
 
 //real dh ratchet tick
@@ -71,14 +71,14 @@ func main() {
 	bob.otherDH = alice.myDH.PublicKey()
 	bob.dh_ratchet_send()
 	bob_ciphertext1 := bob.sending("world")
-//alice recieve
+//alice receive
 	alice.dh_ratchet_recv(bob.myDH.PublicKey())
 	alice_plaintext1 := alice.recving(bob_ciphertext1)
 
 //same dh ratchet, no tick
 //bob send
 	bob_ciphertext2 := bob.sending("marco")
-//alice recieves
+//alice receives
 	alice_plaintext2 := alice.recving(bob_ciphertext2)
 
 	fmt.Println("Alice:\t", bob_plaintext1)
@@ -216,14 +216,14 @@ func (person *Person) dh_ratchet_send(){
 	curve := ecdh.X25519()
 	person.myDH, _ = curve.GenerateKey(rand.Reader)
 	dhs, _ := person.myDH.ECDH(person.otherDH)
-	person.root.root_ratchet_next(dhs)
+	person.root.root_ratchet_next(append(person.root.state, dhs...))
 	person.send.state = person.root.next
 }
 
 func (person *Person) dh_ratchet_recv(dhKey *ecdh.PublicKey){
 	person.otherDH = dhKey
 	dhs, _ := person.myDH.ECDH(person.otherDH)
-	person.root.root_ratchet_next(dhs)
+	person.root.root_ratchet_next(append(person.root.state, dhs...))
 	person.recv.state = person.root.next
 }
 
@@ -243,6 +243,7 @@ func (person *Person) recving(cipherText []byte) string {
 	return decryptGCM(person.recv.next, person.recv.iv, cipherText)
 
 }
+
 func (ratchet *Ratchet) chain_ratchet_next(secret []byte) {
 	output := hkdf_output(1, int(float32(keySize)*2.5), sha256.New, secret, nil, nil)
 	ratchet.state = output[:keySize]
