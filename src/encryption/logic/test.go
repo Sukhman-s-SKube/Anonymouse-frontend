@@ -170,7 +170,10 @@ func (ratchet *Ratchet) root_ratchet_next(secret []byte) {
 	ratchet.next = output[keySize:]
 }
 
-
+func (person *Person) sending(msg string) []byte {
+	person.send.chain_ratchet_next(person.send.state)
+	return encryptGCM(person.send.next, person.send.iv, []byte(msg))
+}
 
 
 
