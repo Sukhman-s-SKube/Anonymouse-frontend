@@ -219,7 +219,25 @@ func encryptGCM(key, nonce []byte, msg []byte) []byte {
 	return cipherText
 }
 
+func decryptGCM(key, nonce []byte, cipherText []byte) string {
 
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "nil"
+	}
+
+	gcm, err := cipher.NewGCMWithNonceSize(block, keySize/2)
+	if err != nil {
+		return "nil"
+	}
+
+	plainText, err := gcm.Open(nil, nonce, cipherText, nil)
+	if err != nil {
+		return "nil"
+	}
+
+	return string(plainText)
+}
 
 
 func b16(msg []byte) string {
