@@ -144,7 +144,10 @@ func (person *Person) root_ratchet_send(){
 	person.send.state = person.root.next
 }
 
-
+func (person *Person) root_ratchet_recv(){
+	person.root.root_ratchet_next(person.root.state)
+	person.recv.state = person.root.next
+}
 
 
 
