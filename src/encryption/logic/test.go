@@ -164,7 +164,11 @@ func (person *Person) dh_ratchet_recv(dhKey *ecdh.PublicKey){
 	person.recv.state = person.root.next
 }
 
-
+func (ratchet *Ratchet) root_ratchet_next(secret []byte) {
+	output := hkdf_output(1, keySize*2, sha256.New, secret, nil, nil)
+	ratchet.state = output[:keySize]
+	ratchet.next = output[keySize:]
+}
 
 
 
