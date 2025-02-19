@@ -86,9 +86,72 @@ func main() {
 	fmt.Println("Bob:\t", alice_plaintext2)
 }
 
+func print_X3DH_diff(alice Person, bob Person){
+	fmt.Println(alice.name)
+	fmt.Println(alice.IK)
+	fmt.Println(alice.EK)
+	fmt.Println(alice.SPK)
+	fmt.Println(alice.OPK)
+	fmt.Println(alice.Xdh1)
+	fmt.Println(alice.Xdh2)
+	fmt.Println(alice.Xdh3)
+	fmt.Println(alice.Xdh4)
+	fmt.Println(alice.SK)
 
+	fmt.Println()
+	
+	fmt.Println(bob.name)
+	fmt.Println(bob.IK)
+	fmt.Println(bob.EK)
+	fmt.Println(bob.SPK)
+	fmt.Println(bob.OPK)
+	fmt.Println(bob.Xdh1)
+	fmt.Println(bob.Xdh2)
+	fmt.Println(bob.Xdh3)
+	fmt.Println(bob.Xdh4)
+	fmt.Println(bob.SK)
+	
+	fmt.Println()
 
+	fmt.Println("name:", alice.name == bob.name)
+	fmt.Println("IK:", alice.IK.Equal(bob.IK))
+	fmt.Println("EK:", alice.EK.Equal(bob.EK))
+	fmt.Println("SPK:", alice.SPK.Equal(bob.SPK))
+	fmt.Println("OPK:", alice.OPK.Equal(bob.OPK))
+	fmt.Println("Xdh1:", bytes.Equal(alice.Xdh1, bob.Xdh1))
+	fmt.Println("Xdh2:", bytes.Equal(alice.Xdh2, bob.Xdh2))
+	fmt.Println("Xdh3:", bytes.Equal(alice.Xdh3, bob.Xdh3))
+	fmt.Println("Xdh4:", bytes.Equal(alice.Xdh4, bob.Xdh4))
+	fmt.Println("len:", len(alice.SK) == len(bob.SK))
+	fmt.Println("SK:", bytes.Equal(alice.SK, bob.SK))
+}
 
+func print_ratchet_diff(alice Person, bob Person){
+	fmt.Println(alice.name)
+	fmt.Println(alice.root.state)
+	fmt.Println(alice.send.state)
+	fmt.Println(alice.send.next)
+	fmt.Println(alice.recv.state)
+	fmt.Println(alice.recv.next)
+	
+	fmt.Println()
+	
+	fmt.Println(bob.name)
+	fmt.Println(bob.root.state)
+	fmt.Println(bob.recv.state)
+	fmt.Println(bob.recv.next)
+	fmt.Println(bob.send.state)
+	fmt.Println(bob.send.next)
+
+	fmt.Println()
+
+	fmt.Println("name:", alice.name == bob.name)
+	fmt.Println("root:", bytes.Equal(alice.root.state, bob.root.state))
+	fmt.Println("alice-send-chain -> bob-recv-chain:", bytes.Equal(alice.send.state, bob.recv.state))
+	fmt.Println("alice-send-message -> bob-recv-message:", bytes.Equal(alice.send.next, bob.recv.next))
+	fmt.Println("alice-recv-chain -> bob-send-chain:", bytes.Equal(alice.recv.state, bob.send.state))
+	fmt.Println("alice-recv-message -> bob-send-message:", bytes.Equal(alice.recv.next, bob.send.next))
+}
 
 var keySize = 32
 type Ratchet struct{
