@@ -180,7 +180,12 @@ func (person *Person) recving(cipherText []byte) string {
 	return decryptGCM(person.recv.next, person.recv.iv, cipherText)
 
 }
-
+func (ratchet *Ratchet) chain_ratchet_next(secret []byte) {
+	output := hkdf_output(1, int(float32(keySize)*2.5), sha256.New, secret, nil, nil)
+	ratchet.state = output[:keySize]
+	ratchet.next = output[keySize:keySize*2]
+	ratchet.iv = output[keySize*2:]
+}
 
 func hkdf_output (numKeys int, outputSize int, hash func() hash.Hash, secret, salt, info []byte) []byte{
 
