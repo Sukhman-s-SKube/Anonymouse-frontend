@@ -17,16 +17,14 @@ import {
 } from '@/Components/ui/form';
 import { Input } from '@/Components/ui/input';
 import { Message } from '@/Components/Message/Message';
-import ConfirmModal from './ConfirmModal';
 
 export const formSchema = z.object({
     msg: z.string().min(1),
 });
 
-export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newChatMembers, chatrooms = [], onDeleteChatroom  }) => {
+export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newChatMembers, chatrooms = []}) => {
     const [messages, setMessages] = useState([]);
     const [chatMember, setChatMember] = useState("");
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const outMsgKeys = useRef({});
 
     const msgInputRef = useRef(null);
@@ -39,19 +37,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
             msg: "",
         },
     });
-
-    const handleDeleteClick = () => {
-      setShowDeleteModal(true);
-    };
-  
-    const confirmDelete = () => {
-      setShowDeleteModal(false);
-      onDeleteChatroom(chatroom._id);
-    };
-  
-    const cancelDelete = () => {
-      setShowDeleteModal(false);
-    };
 
     useEffect(() => {
         async function socketNewMsg() {
@@ -336,22 +321,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     return(
         <div className="chatroom">
             <h1 className="text-center text-4xl font-bold mb-10 text-green-600">Chatroom</h1>
-
-              {chatroom && (
-                <div className="text-center mb-4">
-                  <Button variant="destructive" onClick={handleDeleteClick}>
-                    Delete Chatroom
-                  </Button>
-                </div>
-              )}
-
-              {showDeleteModal && (
-                <ConfirmModal
-                  message="Are you sure you want to delete this chatroom? This will delete all messages for everyone."
-                  onConfirm={confirmDelete}
-                  onCancel={cancelDelete}
-                />
-              )}
             <div className="flex-1 overflow-y-scroll p-5 box-border">
                 {messages == null || messages.length == 0 ? 'No chats to show' : messages.map((msg) => (
                     <Message content={msg.content} isSender={msg.sender == userId} key={msg.mongoId} pending={msg.pending}/>

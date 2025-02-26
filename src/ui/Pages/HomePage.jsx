@@ -197,6 +197,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
               darkMode={darkMode}
               setMsgNotifs={setMsgNotifs}
               showContent={showSidebarContent}
+              onDeleteChatroom={handleDeleteChatroom}
             />
             <Chatroom
               chatroom={currChatroom}
