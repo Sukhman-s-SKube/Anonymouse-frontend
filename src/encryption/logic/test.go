@@ -159,7 +159,6 @@ var keySize = 32
 type Ratchet struct{
 	state []byte
 	next []byte
-	iv []byte
 }
 type Person struct{
 	name string
@@ -239,20 +238,19 @@ func (ratchet *Ratchet) root_ratchet_next(secret []byte) {
 
 func (person *Person) sending(msg string) []byte {
 	person.send.chain_ratchet_next(person.send.state)
-	return encryptGCM(person.send.next, person.send.iv, []byte(msg), person.AD)
+	return encryptGCM(person.send.next, []byte(msg), person.AD)
 }
 
 func (person *Person) recving(cipherText []byte) string {
 	person.recv.chain_ratchet_next(person.recv.state)
-	return decryptGCM(person.recv.next, person.recv.iv, cipherText, person.AD)
+	return decryptGCM(person.recv.next, cipherText, person.AD)
 
 }
 
 func (ratchet *Ratchet) chain_ratchet_next(secret []byte) {
-	output := hkdf_output(1, int(float32(keySize)*2.5), sha256.New, secret, nil, nil)
+	output := hkdf_output(1, keySize*2, sha256.New, secret, nil, nil)
 	ratchet.state = output[:keySize]
-	ratchet.next = output[keySize:keySize*2]
-	ratchet.iv = output[keySize*2:]
+	ratchet.next = output[keySize:]
 }
 
 func hkdf_output (numKeys, outputSize int, hash func() hash.Hash, secret, salt, info []byte) []byte{
@@ -270,41 +268,51 @@ func hkdf_output (numKeys, outputSize int, hash func() hash.Hash, secret, salt, 
 	return keys
 }
 
-func encryptGCM(key, nonce, msg, AD []byte) []byte {
+func encryptGCM(key, msg, AD []byte) []byte {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil
 	}
 
-	gcm, err := cipher.NewGCMWithNonceSize(block, keySize/2)
+	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil
 	}
 
-	cipherText := gcm.Seal(nil, nonce, msg, AD)
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil
+	}
 
-	return cipherText
+	cipherBytes := gcm.Seal(nonce, nonce, msg, AD)
+
+	return cipherBytes
 }
 
-func decryptGCM(key, nonce, cipherText, AD []byte) string {
+func decryptGCM(key, cipherBytes, AD []byte) string {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "nil"
+		return "err"
 	}
 
-	gcm, err := cipher.NewGCMWithNonceSize(block, keySize/2)
+	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return "nil"
+		return "err"
+	}
+	if len(cipherBytes) < gcm.NonceSize() {
+		return "err"
 	}
 
-	plainText, err := gcm.Open(nil, nonce, cipherText, AD)
+	nonce := cipherBytes[:gcm.NonceSize()]
+	cipherBytes = cipherBytes[gcm.NonceSize():]
 
+	plainBytes, err := gcm.Open(nil, nonce, cipherBytes, AD)
 	if err != nil {
-		return "nil"
+		return "err"
 	}
 
-	return string(plainText)
+	return string(plainBytes)
 }
 
 
