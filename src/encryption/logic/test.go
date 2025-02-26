@@ -63,8 +63,10 @@ func main() {
 //working off of the SK from X3DH
 //alice send
 	alice_ciphertext1 := alice.sending("hello")
-//bob receive
+	alice.AD = nil
+	//bob receive
 	bob_plaintext1 := bob.recving(alice_ciphertext1)
+	bob.AD = nil
 
 //real dh ratchet tick
 //bob send
@@ -86,7 +88,7 @@ func main() {
 	fmt.Println("Bob:\t", alice_plaintext2)
 }
 
-func print_X3DH_diff(alice Person, bob Person){
+func print_X3DH_diff(alice, bob Person){
 	fmt.Println(alice.name)
 	fmt.Println(alice.IK)
 	fmt.Println(alice.EK)
@@ -126,7 +128,7 @@ func print_X3DH_diff(alice Person, bob Person){
 	fmt.Println("SK:", bytes.Equal(alice.SK, bob.SK))
 }
 
-func print_ratchet_diff(alice Person, bob Person){
+func print_ratchet_diff(alice, bob Person){
 	fmt.Println(alice.name)
 	fmt.Println(alice.root.state)
 	fmt.Println(alice.send.state)
@@ -165,7 +167,7 @@ type Person struct{
 	IK, EK, SPK, OPK *ecdh.PrivateKey
 	prekey_signature []byte
 	Xdh1, Xdh2, Xdh3, Xdh4 []byte
-	SK []byte
+	SK, AD []byte
 
 	root Ratchet
 	send Ratchet
@@ -191,6 +193,7 @@ func (person *Person) X3DH_send(otherPerson Person){
 	person.Xdh3, _ = person.EK.ECDH(otherPerson.SPK.PublicKey())
 	person.Xdh4, _ = person.EK.ECDH(otherPerson.OPK.PublicKey())
 	person.SK = hkdf_output(1, 32, sha256.New, append(append(append(person.Xdh1, person.Xdh2...), person.Xdh3...), person.Xdh4...), nil, nil)
+	person.AD = append(person.IK.PublicKey().Bytes(), otherPerson.IK.PublicKey().Bytes()...)
 }
 
 func (person *Person) X3DH_recv(otherPerson Person){
@@ -199,6 +202,7 @@ func (person *Person) X3DH_recv(otherPerson Person){
 	person.Xdh2, _ = person.IK.ECDH(otherPerson.EK.PublicKey())
 	person.Xdh4, _ = person.OPK.ECDH(otherPerson.EK.PublicKey())
 	person.SK = hkdf_output(1, 32, sha256.New, append(append(append(person.Xdh1, person.Xdh2...), person.Xdh3...), person.Xdh4...), nil, nil)
+	person.AD = append(otherPerson.IK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...)
 }
 
 
@@ -235,12 +239,12 @@ func (ratchet *Ratchet) root_ratchet_next(secret []byte) {
 
 func (person *Person) sending(msg string) []byte {
 	person.send.chain_ratchet_next(person.send.state)
-	return encryptGCM(person.send.next, person.send.iv, []byte(msg))
+	return encryptGCM(person.send.next, person.send.iv, []byte(msg), person.AD)
 }
 
 func (person *Person) recving(cipherText []byte) string {
 	person.recv.chain_ratchet_next(person.recv.state)
-	return decryptGCM(person.recv.next, person.recv.iv, cipherText)
+	return decryptGCM(person.recv.next, person.recv.iv, cipherText, person.AD)
 
 }
 
@@ -251,8 +255,7 @@ func (ratchet *Ratchet) chain_ratchet_next(secret []byte) {
 	ratchet.iv = output[keySize*2:]
 }
 
-func hkdf_output (numKeys int, outputSize int, hash func() hash.Hash, secret, salt, info []byte) []byte{
-
+func hkdf_output (numKeys, outputSize int, hash func() hash.Hash, secret, salt, info []byte) []byte{
 	hkdf_step := hkdf.New(hash, secret, salt, info)
 
 	var keys []byte
@@ -267,7 +270,7 @@ func hkdf_output (numKeys int, outputSize int, hash func() hash.Hash, secret, sa
 	return keys
 }
 
-func encryptGCM(key, nonce []byte, msg []byte) []byte {
+func encryptGCM(key, nonce, msg, AD []byte) []byte {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil
@@ -278,12 +281,12 @@ func encryptGCM(key, nonce []byte, msg []byte) []byte {
 		return nil
 	}
 
-	cipherText := gcm.Seal(nil, nonce, msg, nil)
+	cipherText := gcm.Seal(nil, nonce, msg, AD)
 
 	return cipherText
 }
 
-func decryptGCM(key, nonce []byte, cipherText []byte) string {
+func decryptGCM(key, nonce, cipherText, AD []byte) string {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -295,7 +298,8 @@ func decryptGCM(key, nonce []byte, cipherText []byte) string {
 		return "nil"
 	}
 
-	plainText, err := gcm.Open(nil, nonce, cipherText, nil)
+	plainText, err := gcm.Open(nil, nonce, cipherText, AD)
+
 	if err != nil {
 		return "nil"
 	}
@@ -310,40 +314,3 @@ func b16(msg []byte) string {
 func b64(msg []byte) string {
 	return base64.StdEncoding.EncodeToString(msg)
 }
-
-
-
-/* Code below is all wrong */
-
-// const p_expo float64 = 255
-// var p float64 = math.Pow(2, p_expo) - 19
-
-
-// func calculate_key_pair(k) {
-// 	Ey, Es := k*convert_mont(9)
-// 	Ay := Ey
-// 	if Es == 1:
-// 		a := math.Mod(-k, q)
-// 	else:
-// 		a := math.Mod(k, q)
-// 	return Ay, 0, a
-// }
-// func convert_mont(u ecdh.PublicKey.Bytes) (*edwards25519.Point, error){
-// 	u_masked, err := (&field.Element{}).SetBytes(u)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// y = (u - 1)/(u + 1)
-// 	a := new(field.Element).Subtract(u_masked, one)
-// 	b := new(field.Element).Add(u_masked, one)
-// 	y := new(field.Element).Multiply(a, b.Invert(b)).Bytes()
-
-// 	// Set sign to 0
-// 	y[31] &= 0x7F
-
-// 	return (&edwards25519.Point{}).SetBytes(y)
-// }
-// func u_to_y(u) float64{
-// 	return (u - 1) * math.Mod(math.Pow((u + 1), (p - 2)), p)
-// }
