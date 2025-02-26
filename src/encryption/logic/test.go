@@ -191,7 +191,7 @@ func (person *Person) X3DH_send(otherPerson Person){
 	person.Xdh2, _ = person.EK.ECDH(otherPerson.IK.PublicKey())
 	person.Xdh3, _ = person.EK.ECDH(otherPerson.SPK.PublicKey())
 	person.Xdh4, _ = person.EK.ECDH(otherPerson.OPK.PublicKey())
-	person.SK = hkdf_output(1, 32, sha256.New, append(append(append(person.Xdh1, person.Xdh2...), person.Xdh3...), person.Xdh4...), nil, nil)
+	person.SK = hkdf_output(keySize, sha256.New, append(append(append(person.Xdh1, person.Xdh2...), person.Xdh3...), person.Xdh4...), nil, nil)
 	person.AD = append(person.IK.PublicKey().Bytes(), otherPerson.IK.PublicKey().Bytes()...)
 }
 
@@ -200,7 +200,7 @@ func (person *Person) X3DH_recv(otherPerson Person){
 	person.Xdh3, _ = person.SPK.ECDH(otherPerson.EK.PublicKey())
 	person.Xdh2, _ = person.IK.ECDH(otherPerson.EK.PublicKey())
 	person.Xdh4, _ = person.OPK.ECDH(otherPerson.EK.PublicKey())
-	person.SK = hkdf_output(1, 32, sha256.New, append(append(append(person.Xdh1, person.Xdh2...), person.Xdh3...), person.Xdh4...), nil, nil)
+	person.SK = hkdf_output(keySize, sha256.New, append(append(append(person.Xdh1, person.Xdh2...), person.Xdh3...), person.Xdh4...), nil, nil)
 	person.AD = append(otherPerson.IK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...)
 }
 
@@ -231,7 +231,7 @@ func (person *Person) dh_ratchet_recv(dhKey *ecdh.PublicKey){
 }
 
 func (ratchet *Ratchet) root_ratchet_next(secret []byte) {
-	output := hkdf_output(1, keySize*2, sha256.New, secret, nil, nil)
+	output := hkdf_output(keySize*2, sha256.New, secret, nil, nil)
 	ratchet.state = output[:keySize]
 	ratchet.next = output[keySize:]
 }
@@ -248,23 +248,23 @@ func (person *Person) recving(cipherText []byte) string {
 }
 
 func (ratchet *Ratchet) chain_ratchet_next(secret []byte) {
-	output := hkdf_output(1, keySize*2, sha256.New, secret, nil, nil)
+	output := hkdf_output(keySize*2, sha256.New, secret, nil, nil)
 	ratchet.state = output[:keySize]
 	ratchet.next = output[keySize:]
 }
 
-func hkdf_output (numKeys, outputSize int, hash func() hash.Hash, secret, salt, info []byte) []byte{
+func hkdf_output (/*numKeys,*/ outputSize int, hash func() hash.Hash, secret, salt, info []byte) []byte{
 	hkdf_step := hkdf.New(hash, secret, salt, info)
 
 	var keys []byte
-	for i := 0; i < numKeys; i++ {
-		key := make([]byte, outputSize)
-		if _, err := io.ReadFull(hkdf_step, key); err != nil {
-			panic(err)
-		}
-
-		keys = key
+	// for i := 0; i < numKeys; i++ {
+	key := make([]byte, outputSize)
+	if _, err := io.ReadFull(hkdf_step, key); err != nil {
+		panic(err)
 	}
+
+	keys = key
+	// }
 	return keys
 }
 
