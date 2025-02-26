@@ -46,6 +46,34 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       });
     };
 
+    const handleDeleteChatroom = async (chatroomId) => {
+      try {
+        await axios.delete(`${apiroot}/chatroom/${chatroomId}`, {
+          headers: {
+            Authorization: sessionStorage.getItem("JWT"),
+          },
+        });
+        toast.success(`Chatroom ${chatroomId} successfully deleted.`);
+        
+        if (window.electron && window.electron.deleteMsgs) {
+          await window.electron.deleteMsgs(chatroomId);
+        }
+        
+        setChatrooms((prev) => prev.filter((room) => room._id !== chatroomId));
+        
+        if (currChatroom && currChatroom._id === chatroomId) {
+          setCurrChatroom((prevChatrooms) => {
+            const updatedChatrooms = chatrooms.filter((room) => room._id !== chatroomId);
+            return updatedChatrooms.length > 0 ? updatedChatrooms[0] : null;
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to delete chatroom.");
+      }
+    };
+    
+
     useEffect(() => {
         async function setupSocket() {
             let tempSoc = await io("https://se4450.duckdns.org/", {
@@ -162,6 +190,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
               socket={socket}
               setMsgNotifs={setMsgNotifs}
               apiroot={apiroot}
+              onDeleteChatroom={handleDeleteChatroom}
             />
             {socket && (
               <ChatNotifications
@@ -197,5 +226,4 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
           </div>
         </ThemeProvider>
       );
-      
     };

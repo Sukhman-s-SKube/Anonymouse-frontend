@@ -17,15 +17,16 @@ import {
 } from '@/Components/ui/form';
 import { Input } from '@/Components/ui/input';
 import { Message } from '@/Components/Message/Message';
-// import { Chatroo}
+import ConfirmModal from './ConfirmModal';
 
 export const formSchema = z.object({
     msg: z.string().min(1),
 });
 
-export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newChatMembers, chatrooms = [] }) => {
+export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newChatMembers, chatrooms = [], onDeleteChatroom  }) => {
     const [messages, setMessages] = useState([]);
     const [chatMember, setChatMember] = useState("");
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const outMsgKeys = useRef({});
 
     const msgInputRef = useRef(null);
@@ -39,6 +40,19 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         },
     });
 
+    const handleDeleteClick = () => {
+      setShowDeleteModal(true);
+    };
+  
+    const confirmDelete = () => {
+      setShowDeleteModal(false);
+      onDeleteChatroom(chatroom._id);
+    };
+  
+    const cancelDelete = () => {
+      setShowDeleteModal(false);
+    };
+
     useEffect(() => {
         async function socketNewMsg() {
             socket.on('newMessage', await handleMsgIn);
@@ -50,72 +64,148 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         }
     }, [socket, chatroom]);
 
-    const addMessage = async (data) => {
+    useEffect(() => {
+        if (!socket || !chatroom) return;
+        const handleReconnect = () => {
+          console.log("Socket reconnected – refreshing messages");
+          getMessages();
+        };
+        socket.on("reconnect", handleReconnect);
+        return () => {
+          socket.off("reconnect", handleReconnect);
+        };
+      }, [socket, chatroom]);
+
+      useEffect(() => {
+        if (!apiroot) return;
+        const pendingMessages = messages.filter((msg) => msg.pending === true);
+        pendingMessages.forEach((msg) => {
+          resendPendingMessage(msg);
+        });
+      }, [apiroot]); 
+      
+      
+
+      const resendPendingMessage = async (pendingMsg) => {
+        const timestamp = new Date(pendingMsg.timestamp);
+        try {
+          const response = await axios.delete(`${apiroot}/user/dh_keys/${chatMember}`, {
+            headers: { Authorization: sessionStorage.getItem("JWT") },
+          });
+          const otherPubDH = response.data.popped_key.pubKey;
+          const otherPubDHId = response.data.popped_key.id;
+          
+          let encData = await encryptMsg(otherPubDH, pendingMsg.content, timestamp.toISOString());
+          if (encData["error"] !== "") {
+            console.log(encData["error"]);
+            return toast.error("Resend Msg: Failed to encrypt message.");
+          }
+          
+          let payload = {
+            content: encData["cipherText"],
+            pubKey: encData["pubKey"],
+            privKeyId: otherPubDHId.toString(),
+            timestamp: timestamp.toISOString(),
+          };
+          const properHash = await window.electron.sha256(
+            payload.content + payload.pubKey + payload.timestamp
+          );
+          
+          outMsgKeys.current = { ...outMsgKeys.current, [properHash]: encData["masterSec"] };
+      
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg._id === pendingMsg._id ? { ...msg, hash: properHash, pending: false } : msg
+            )
+          );
+          
+          socket.emit("chatroomMessage", {
+            chatroomId: chatroom._id,
+            message: payload,
+          });
+        } catch (err) {
+          console.error("Resend failed", err);
+          // Optionally, you could leave the message as pending and try again later.
+        }
+      };
+      
+      
+    
+      const addMessage = async (data) => {
         await window.electron.insertMsg(data);
         let confirmedMsg = await window.electron.getMsg(data._id);
-    
+      
         if (data.chatroom === chatroom._id) {
-            setMessages((prevMsgs) => {
-                const index = prevMsgs.findIndex(
-                    (msg) => msg.hash === data.message.hash && msg.pending === true
-                );
-                if (index !== -1) {
-                    const updatedMsg = { ...confirmedMsg, pending: false };
-                    const newMsgs = [...prevMsgs];
-                    newMsgs[index] = updatedMsg;
-                    return newMsgs;
-                } else {
-                    return [...prevMsgs, confirmedMsg];
-                }
-            });
-            setTimeout(() => {
-                chatBottom.current.scrollIntoView({ behaviour: "smooth" });
-            }, 10);
-        }
-    };
-
-    const handleMsgIn = async (data) => {
-        if (data.sender === userId) {
-            let hash = await window.electron.sha256(
-                data.message.content + data.message.pubKey + data.message.timestamp
+          setMessages((prevMsgs) => {
+            // Match by timestamp since that should be unique and unchanged.
+            const index = prevMsgs.findIndex(
+              (msg) =>
+                msg.pending === true &&
+                msg.timestamp === data.message.timestamp // assume this matches the original timestamp
             );
-            if (outMsgKeys.current[hash]) {
-                let res = await decryptMsg(
-                    data.message.content,
-                    data.message.timestamp,
-                    outMsgKeys.current[hash],
-                    ""
-                );
-                if (res["error"] != "") {
-                    console.log(res["error"]);
-                    return toast.error("Msg In: Failed to decrypt msg. Check console for error");
-                }
-                delete outMsgKeys.current[hash];
-                data.message.hash = hash;
-                data.message.content = res["plainText"];
-                await addMessage(data);
+            if (index !== -1) {
+              // Replace the pending message with the confirmed one.
+              const newMsgs = [...prevMsgs];
+              newMsgs[index] = { ...confirmedMsg, pending: false, provisional: false };
+              return newMsgs;
+            } else {
+              return [...prevMsgs, confirmedMsg];
             }
-            return;
+          });
+          setTimeout(() => {
+            if (chatBottom.current) {
+              chatBottom.current.scrollIntoView({ behaviour: "smooth" });
+            }
+          }, 10);
+          return;
         }
-        
+        setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true }));
+        return;
+      };
+      
+      const handleMsgIn = async (data) => {
+        if (data.sender === userId) {
+          // For messages sent by the current user.
+          let hash = await window.electron.sha256(
+            data.message.content + data.message.pubKey + data.message.timestamp
+          );
+          if (outMsgKeys.current[hash]) {
+            let res = await decryptMsg(
+              data.message.content,
+              data.message.timestamp,
+              outMsgKeys.current[hash],
+              ""
+            );
+            if (res["error"] != "") {
+              console.log(res["error"]);
+              return toast.error("Msg In: Failed to decrypt msg. Check console for error");
+            }
+            delete outMsgKeys.current[hash];
+            data.message.hash = hash;
+            data.message.content = res["plainText"];
+            await addMessage(data);
+          }
+          return;
+        }
+      
         let myKey = await electron.getDHKey(parseInt(data.message.privKeyId));
         let res = await decryptMsg(
-            data.message.content,
-            data.message.timestamp,
-            data.message.pubKey,
-            myKey.privKey
+          data.message.content,
+          data.message.timestamp,
+          data.message.pubKey,
+          myKey.privKey
         );
         if (res["error"] != "") {
-            console.log(res["error"]);
-            return toast.error("Msg In: Failed to decrypt msg. Check console for error");
+          console.log(res["error"]);
+          return toast.error("Msg In: Failed to decrypt msg. Check console for error");
         }
         data.message.content = res["plainText"];
         if (data.chatroom != chatroom._id) {
-            setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true }));
-            return;
+          setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true }));
+          return;
         }
         await addMessage(data);
-    };
+      };
     
 
     const getMessages = async () => {
@@ -173,40 +263,42 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
 
 
     const sendMessage = async (values) => {
-        const timestamp = new Date();
-      
+        const timestamp = new Date().toISOString(); // unique timestamp string
         const provisionalId = "pending_" + new Date().getTime();
-        let provisionalHash = provisionalId;
-      
+        
+        // Create a pending message with a provisional flag and the timestamp.
         const pendingMessage = {
           _id: provisionalId,
-          content: values.msg,
+          content: values.msg.trim(),
           sender: userId,
           pending: true,
-          timestamp: timestamp.toJSON(),
-          hash: provisionalHash,
+          provisional: true, // flag to mark as pending
+          timestamp,         // unique identifier
           chatroom: chatroom._id,
         };
       
+        // Immediately add the pending message.
         setMessages((prevMessages) => [...prevMessages, pendingMessage]);
+        
+        // Clear the input form immediately.
+        form.reset();
+        if (msgInputRef.current) msgInputRef.current.focus();
       
+        // Continue with retrieving the other user's key, encryption, etc.
         let response;
         try {
           response = await axios.delete(`${apiroot}/user/dh_keys/${chatMember}`, {
-            headers: {
-              Authorization: sessionStorage.getItem("JWT"),
-            },
+            headers: { Authorization: sessionStorage.getItem("JWT") },
           });
         } catch (err) {
           toast.error("Sending Msg: Failed to get other user's key. Message remains pending.");
           console.error(err);
           return;
         }
-      
         const otherPubDH = response.data.popped_key.pubKey;
-        const otherPubDHId = response.data.popped_key.id; 
+        const otherPubDHId = response.data.popped_key.id;
       
-        let encData = await encryptMsg(otherPubDH, values.msg, timestamp.toJSON());
+        let encData = await encryptMsg(otherPubDH, values.msg.trim(), timestamp);
         if (encData["error"] !== "") {
           toast.error("Sending Msg: Failed to encrypt message. Message remains pending.");
           console.log(encData["error"]);
@@ -217,37 +309,49 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
           content: encData["cipherText"],
           pubKey: encData["pubKey"],
           privKeyId: otherPubDHId.toString(),
-          timestamp: timestamp.toJSON(),
+          timestamp,
         };
       
-        const properHash = await window.electron.sha256(payload.content + payload.pubKey + payload.timestamp);
-
+        // Compute the proper hash if needed (or you can use the timestamp as your unique identifier)
+        const properHash = await window.electron.sha256(
+          payload.content + payload.pubKey + payload.timestamp
+        );
         outMsgKeys.current = { ...outMsgKeys.current, [properHash]: encData["masterSec"] };
       
+        // Update the pending message in state to include the proper hash.
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
             msg._id === provisionalId ? { ...msg, hash: properHash } : msg
           )
         );
       
+        // Emit the message via socket.
         socket.emit("chatroomMessage", {
           chatroomId: chatroom._id,
           message: payload,
         });
-      
-        form.reset();
-        msgInputRef.current.focus();
       };
       
-      
-
-    const test = () => {
-        console.log(chatroom);
-    };
 
     return(
         <div className="chatroom">
             <h1 className="text-center text-4xl font-bold mb-10 text-green-600">Chatroom</h1>
+
+              {chatroom && (
+                <div className="text-center mb-4">
+                  <Button variant="destructive" onClick={handleDeleteClick}>
+                    Delete Chatroom
+                  </Button>
+                </div>
+              )}
+
+              {showDeleteModal && (
+                <ConfirmModal
+                  message="Are you sure you want to delete this chatroom? This will delete all messages for everyone."
+                  onConfirm={confirmDelete}
+                  onCancel={cancelDelete}
+                />
+              )}
             <div className="flex-1 overflow-y-scroll p-5 box-border">
                 {messages == null || messages.length == 0 ? 'No chats to show' : messages.map((msg) => (
                     <Message content={msg.content} isSender={msg.sender == userId} key={msg.mongoId} pending={msg.pending}/>

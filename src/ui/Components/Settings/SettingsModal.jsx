@@ -48,12 +48,18 @@ const FormRow = styled.div`
   label {
     margin-bottom: 5px;
     font-size: 0.9rem;
+    color: ${({ theme }) => theme.text};
   }
   
   input {
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
+    background-color: ${({ theme }) => theme.inputBackground};
+    color: ${({ theme }) => theme.inputText};
+    &::placeholder {
+      color: ${({ theme }) => theme.inputText};
+    }
   }
 `;
 

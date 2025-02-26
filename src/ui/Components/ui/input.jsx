@@ -2,9 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const Input = React.forwardRef(({ className, type, ...props }, ref) => {
-  // You can optionally get darkMode from props or context.
-  // For demonstration, suppose we pass a prop `isDark` to override the background:
-  const { isDark } = props; // if you pass isDark={true} when in dark mode
+  const { isDark } = props; 
   const darkBgStyle = isDark ? { backgroundColor: "#3a3a3a" } : {};
   
   return (
