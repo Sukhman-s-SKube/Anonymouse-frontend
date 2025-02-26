@@ -9,11 +9,12 @@ export const Sidebar = ({
   setCurrChatroom,
   setAddNewChat,
   isNewChatOpen,
-  setMsgNotifs, 
+  setMsgNotifs,
+  showContent,
 }) => {
   return (
     <div className="flex-auto max-w-80 bg-green-600 text-white p-5 box-border overflow-y-auto h-full shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
-      {!isNewChatOpen && (
+      {showContent && (
         <>
           <div className="flex justify-between">
             <h3 className="mt-[0px] text-3xl font-bold">Chats</h3>

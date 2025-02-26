@@ -27,6 +27,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [darkMode, setDarkMode] = useState(false);
     const currentTheme = darkMode ? darkTheme : lightTheme;
+    const [showSidebarContent, setShowSidebarContent] = useState(true);
 
     useEffect(() => {
       const storedPreference = localStorage.getItem('darkMode');
@@ -118,6 +119,18 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
         refreshSideBar();
     }, [newChatCreated]);
 
+    const openNewChat = () => {
+      setShowSidebarContent(false);
+      setAddNewChatToggle(true);
+    };
+
+    const closeNewChat = () => {
+      setAddNewChatToggle(false);
+      setTimeout(() => {
+        setShowSidebarContent(true);
+      }, 300); 
+    };
+
     const sendDHKeysRequest = async (keys) => {
         let response;
         try {
@@ -165,7 +178,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
           <div className={`flex flex-row h-screen relative overflow-hidden ${darkMode ? 'dark' : ''}`}>
             <NewChat
               isOpen={addNewChatToggle}
-              toggle={setAddNewChatToggle}
+              toggle={closeNewChat} 
               apiroot={apiroot}
               setNewChatCreated={setNewChatCreated}
               setCurrChatroom={setCurrChatroom}
@@ -179,10 +192,11 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
                 setCurrChatroom(room);
               }}
               msgNotifs={msgNotifs}
-              setAddNewChat={setAddNewChatToggle}
+              setAddNewChat={openNewChat}
               isNewChatOpen={addNewChatToggle}  
               darkMode={darkMode}
               setMsgNotifs={setMsgNotifs}
+              showContent={showSidebarContent}
             />
             <Chatroom
               chatroom={currChatroom}
