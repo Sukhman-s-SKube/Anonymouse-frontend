@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"encoding/binary"
 	"encoding/base64"
 	"encoding/hex"
 	"crypto/ecdh"
@@ -9,10 +10,9 @@ import (
 	"crypto/sha256"
 	"crypto/aes"
 	"crypto/cipher"
-	// "crypto/ed25519/internal/edwards25519/edwards25519"
-	// "crypto/ed25519"
 	"bytes"
 	"hash"
+	"math"
 	"io"
 	"golang.org/x/crypto/hkdf"
 )
@@ -34,6 +34,9 @@ func main() {
 		fmt.Println(b64(keys[i])) //base64 representation
 	}
 	*/
+
+	basePoint = make([]byte, 32)
+	basePoint[0] = 9
 
 	alice := Person{name: "alice"}
 	alice.key_gen()
@@ -83,16 +86,25 @@ func main() {
 //alice receives
 	alice_plaintext2 := alice.recving(bob_ciphertext2)
 
+//alice third
+	alice.otherDH = bob.myDH.PublicKey()
+	alice.dh_ratchet_send()
+	alice_ciphertext2 := alice.sending("polo")
+
+	bob.dh_ratchet_recv(alice.myDH.PublicKey())
+	bob_plaintext2 := bob.recving(alice_ciphertext2)
+
 	fmt.Println("Alice:\t", bob_plaintext1)
 	fmt.Println("Bob:\t", alice_plaintext1)
 	fmt.Println("Bob:\t", alice_plaintext2)
+	fmt.Println("Alice:\t", bob_plaintext2)
 }
 
 func print_X3DH_diff(alice, bob Person){
 	fmt.Println(alice.name)
 	fmt.Println(alice.IK)
 	fmt.Println(alice.EK)
-	fmt.Println(alice.SPK)
+	fmt.Println(alice.ScK)
 	fmt.Println(alice.OPK)
 	fmt.Println(alice.Xdh1)
 	fmt.Println(alice.Xdh2)
@@ -105,7 +117,7 @@ func print_X3DH_diff(alice, bob Person){
 	fmt.Println(bob.name)
 	fmt.Println(bob.IK)
 	fmt.Println(bob.EK)
-	fmt.Println(bob.SPK)
+	fmt.Println(bob.ScK)
 	fmt.Println(bob.OPK)
 	fmt.Println(bob.Xdh1)
 	fmt.Println(bob.Xdh2)
@@ -118,7 +130,7 @@ func print_X3DH_diff(alice, bob Person){
 	fmt.Println("name:", alice.name == bob.name)
 	fmt.Println("IK:", alice.IK.Equal(bob.IK))
 	fmt.Println("EK:", alice.EK.Equal(bob.EK))
-	fmt.Println("SPK:", alice.SPK.Equal(bob.SPK))
+	fmt.Println("ScK:", alice.ScK.Equal(bob.ScK))
 	fmt.Println("OPK:", alice.OPK.Equal(bob.OPK))
 	fmt.Println("Xdh1:", bytes.Equal(alice.Xdh1, bob.Xdh1))
 	fmt.Println("Xdh2:", bytes.Equal(alice.Xdh2, bob.Xdh2))
@@ -156,6 +168,8 @@ func print_ratchet_diff(alice, bob Person){
 }
 
 var keySize = 32
+var basePoint []byte
+var p = math.Pow(2, 255) - 19
 type Ratchet struct{
 	state []byte
 	next []byte
@@ -163,10 +177,10 @@ type Ratchet struct{
 type Person struct{
 	name string
 
-	IK, EK, SPK, OPK *ecdh.PrivateKey
-	prekey_signature []byte
+	IK, EK, ScK, OPK *ecdh.PrivateKey
+	schnorrProof [][]byte
 	Xdh1, Xdh2, Xdh3, Xdh4 []byte
-	SK, AD []byte
+	x, SK, AD []byte
 
 	root Ratchet
 	send Ratchet
@@ -181,23 +195,35 @@ func (person *Person) key_gen(){
 	curve := ecdh.X25519()
 	person.IK, _ = curve.GenerateKey(rand.Reader)
 	person.EK, _ = curve.GenerateKey(rand.Reader)
-	person.SPK, _ = curve.GenerateKey(rand.Reader)
+	person.ScK, _ = curve.GenerateKey(rand.Reader)
 	person.OPK, _ = curve.GenerateKey(rand.Reader)
+
+	hash := sha256.New()
+	c := hash.Sum(append(append(person.ScK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...), basePoint...))
+	x := (binary.BigEndian.Uint64(c) * binary.BigEndian.Uint64(person.IK.Bytes()) + binary.BigEndian.Uint64(person.ScK.Bytes())) % uint64(p)
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, x)
+	person.x = b
+	person.schnorrProof = append(person.schnorrProof, basePoint, person.IK.PublicKey().Bytes(), person.ScK.PublicKey().Bytes(), person.x)
+	// fmt.Println(person.schnorrProof)
+	
 	person.myDH, _ = curve.GenerateKey(rand.Reader)
+
+	priv, _ := curve.NewPrivateKey(person.x[:])
 }
 
 func (person *Person) X3DH_send(otherPerson Person){
-	person.Xdh1, _ = person.IK.ECDH(otherPerson.SPK.PublicKey())
+	person.Xdh1, _ = person.IK.ECDH(otherPerson.ScK.PublicKey())
 	person.Xdh2, _ = person.EK.ECDH(otherPerson.IK.PublicKey())
-	person.Xdh3, _ = person.EK.ECDH(otherPerson.SPK.PublicKey())
+	person.Xdh3, _ = person.EK.ECDH(otherPerson.ScK.PublicKey())
 	person.Xdh4, _ = person.EK.ECDH(otherPerson.OPK.PublicKey())
 	person.SK = hkdf_output(keySize, sha256.New, append(append(append(person.Xdh1, person.Xdh2...), person.Xdh3...), person.Xdh4...), nil, nil)
 	person.AD = append(person.IK.PublicKey().Bytes(), otherPerson.IK.PublicKey().Bytes()...)
 }
 
 func (person *Person) X3DH_recv(otherPerson Person){
-	person.Xdh1, _ = person.SPK.ECDH(otherPerson.IK.PublicKey())
-	person.Xdh3, _ = person.SPK.ECDH(otherPerson.EK.PublicKey())
+	person.Xdh1, _ = person.ScK.ECDH(otherPerson.IK.PublicKey())
+	person.Xdh3, _ = person.ScK.ECDH(otherPerson.EK.PublicKey())
 	person.Xdh2, _ = person.IK.ECDH(otherPerson.EK.PublicKey())
 	person.Xdh4, _ = person.OPK.ECDH(otherPerson.EK.PublicKey())
 	person.SK = hkdf_output(keySize, sha256.New, append(append(append(person.Xdh1, person.Xdh2...), person.Xdh3...), person.Xdh4...), nil, nil)
@@ -257,16 +283,15 @@ func hkdf_output (/*numKeys,*/ outputSize int, hash func() hash.Hash, secret, sa
 	hkdf_step := hkdf.New(hash, secret, salt, info)
 
 	var keys []byte
-	// for i := 0; i < numKeys; i++ {
 	key := make([]byte, outputSize)
 	if _, err := io.ReadFull(hkdf_step, key); err != nil {
 		panic(err)
 	}
 
 	keys = key
-	// }
 	return keys
 }
+
 
 func encryptGCM(key, msg, AD []byte) []byte {
 	block, err := aes.NewCipher(key)
@@ -322,3 +347,4 @@ func b16(msg []byte) string {
 func b64(msg []byte) string {
 	return base64.StdEncoding.EncodeToString(msg)
 }
+
