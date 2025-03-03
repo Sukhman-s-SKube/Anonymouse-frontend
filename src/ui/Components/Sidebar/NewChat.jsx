@@ -83,15 +83,23 @@ export const NewChat = ({ isOpen, toggle, apiroot, setNewChatCreated, setCurrCha
         setNewChatCreated(true);
         toggle(false);
         setCurrChatroom(response.data);
-      };
+    };
       
   
     return (
         <Wrapper $isOpen={isOpen}>
             <div className="flex items-center justify-between">
-                <IoIosArrowRoundBack className="cursor-pointer" size={40} onClick={() => {toggle(false);}}/>
+                <IoIosArrowRoundBack 
+                  className="cursor-pointer" 
+                  size={40} 
+                  onClick={() => { toggle(false); }}
+                />
                 <h3 className="text-2xl">New Chat</h3>
-                <IoMdCheckmark className={Object.keys(selectedUser).length === 0 ? 'text-neutral-400 cursor-default' : 'text-neutral-50 cursor-pointer'} size={30} onClick={startChatReq}/>
+                <IoMdCheckmark 
+                  className={Object.keys(selectedUser).length === 0 ? 'text-neutral-400 cursor-default' : 'text-neutral-50 cursor-pointer'} 
+                  size={30} 
+                  onClick={startChatReq}
+                />
             </div>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(searchUserReq)} className="flex py-5 ">
@@ -110,7 +118,14 @@ export const NewChat = ({ isOpen, toggle, apiroot, setNewChatCreated, setCurrCha
             </Form>
             <div className="mt-[5px]">
                 {usernames == null || usernames.length == 0 ? '' : usernames.map((username) => (
-                    <Button variant={selectedUser?._id == username._id ? 'selected' : 'inverse'} className="w-full my-[10px] text-base" key={username._id} onClick={() => {setSelectedUser(username)}}>{username.username}</Button>
+                    <Button 
+                      variant={selectedUser?._id == username._id ? 'selected' : 'inverse'} 
+                      className="w-full my-[10px] text-base" 
+                      key={username._id} 
+                      onClick={() => { setSelectedUser(username); }}
+                    >
+                      {username.username}
+                    </Button>
                 ))}
             </div>
         </Wrapper>
