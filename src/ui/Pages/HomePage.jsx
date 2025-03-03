@@ -51,6 +51,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
                 await getChatroomsRequest(socket)
 
                 socket.on("newChatroom", (chatroomData) => {
+                    console.log(chatroomData)
                     setChatrooms((prevChatrooms) => [...prevChatrooms, chatroomData]);
                     //setNewChatCreated(true); uncomment this incase of sidebar not updating correctly
     
