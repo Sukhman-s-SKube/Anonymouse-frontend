@@ -27,23 +27,17 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
 
   const form = useForm({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      msg: "",
-    },
+    defaultValues: { msg: "" },
   });
 
-  // --- Socket and chatroom setup ---
   useEffect(() => {
-    async function socketNewMsg() {
-      socket.on('newMessage', await handleMsgIn);
-    }
     if (socket != null && chatroom != null) {
       getMessages();
-      socketNewMsg();
+      socket.on('newMessage', handleMsgIn);
+      return () => socket.off('newMessage', handleMsgIn);
     }
   }, [socket, chatroom]);
 
-  // --- Feature branch additions: Socket reconnect and pending messages resend ---
   useEffect(() => {
     if (!socket || !chatroom) return;
     const handleReconnect = () => {
@@ -64,17 +58,14 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     });
   }, [apiroot]);
 
-  // --- Main branch functions ---
-
   const readMsgReq = async (msgIds) => {
-    let response;
     try {
-      response = await axios.put(`${apiroot}/message/read`, { message_ids: msgIds }, {
+      await axios.put(`${apiroot}/message/read`, { message_ids: msgIds }, {
         headers: { Authorization: sessionStorage.getItem("JWT") },
       });
     } catch (err) {
       console.log(err);
-      return toast.error("Msg In: Check console for error");
+      toast.error("Msg In: Check console for error");
     }
   };
 
@@ -99,18 +90,24 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       myKey = await window.electron.getDHKey(parseInt(msg.message.privKeyId));
     } catch (err) {
       console.log(err);
-      return toast.error("Msg In: Key not found. Check console for error");
+      toast.error("Msg In: Key not found. Check console for error");
+      return;
     }
-    let res = await decryptMsg(msg.message.content, msg.message.timestamp, msg.message.pubKey, myKey.privKey);
+    let res = await decryptMsg(
+      msg.message.content,
+      msg.message.timestamp,
+      msg.message.pubKey,
+      myKey.privKey
+    );
     if (res["error"] != "") {
       console.log(res["error"]);
-      return toast.error("Msg In: Failed to decrypt msg. Check console for error");
+      toast.error("Msg In: Failed to decrypt msg. Check console for error");
+      return;
     }
     msg.message.content = res["plainText"];
     await window.electron.insertMsg(msg);
   };
 
-  // --- Feature branch function: Resend pending message ---
   const resendPendingMessage = async (pendingMsg) => {
     const timestamp = new Date(pendingMsg.timestamp);
     try {
@@ -153,23 +150,26 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     }
   };
 
-  // --- Merged addMessage function ---
   const addMessage = async (data) => {
     await window.electron.insertMsg(data);
     let confirmedMsg = await window.electron.getMsg(data._id);
+    
     if (data.chatroom === chatroom._id) {
       setMessages((prevMsgs) => {
-        // Use timestamp matching (you might normalize these values if needed)
-        const index = prevMsgs.findIndex(
+        const pendingIndex = prevMsgs.findIndex(
           (msg) =>
             msg.pending === true &&
-            msg.timestamp === data.message.timestamp
+            new Date(msg.timestamp).getTime() === new Date(data.message.timestamp).getTime()
         );
-        if (index !== -1) {
+        if (pendingIndex !== -1) {
           const newMsgs = [...prevMsgs];
-          newMsgs[index] = { ...confirmedMsg, pending: false, provisional: false };
+          newMsgs[pendingIndex] = { ...confirmedMsg, pending: false, provisional: false };
           return newMsgs;
         } else {
+          const exists = prevMsgs.some((msg) => msg._id === confirmedMsg._id);
+          if (exists) {
+            return prevMsgs.map((msg) => (msg._id === confirmedMsg._id ? confirmedMsg : msg));
+          }
           return [...prevMsgs, confirmedMsg];
         }
       });
@@ -184,7 +184,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     return;
   };
 
-  // --- Merged handleMsgIn function ---
   const handleMsgIn = async (data) => {
     if (data.sender === userId) {
       let hash = await window.electron.sha256(
@@ -197,7 +196,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
           outMsgKeys.current[hash],
           ""
         );
-        if (res["error"] != "") {
+        if (res["error"] !== "") {
           console.log(res["error"]);
           return toast.error("Msg In: Failed to decrypt msg. Check console for error");
         }
@@ -206,8 +205,8 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         data.message.content = res["plainText"];
         await addMessage(data);
       }
-      await displayMsg(data);
       await readMsgReq([data._id]);
+      return;
     } else {
       let myKey = await window.electron.getDHKey(parseInt(data.message.privKeyId));
       let res = await decryptMsg(
@@ -216,12 +215,12 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         data.message.pubKey,
         myKey.privKey
       );
-      if (res["error"] != "") {
+      if (res["error"] !== "") {
         console.log(res["error"]);
         return toast.error("Msg In: Failed to decrypt msg. Check console for error");
       }
       data.message.content = res["plainText"];
-      if (data.chatroom != chatroom._id) {
+      if (data.chatroom !== chatroom._id) {
         setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true }));
         return;
       }
@@ -229,14 +228,13 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     }
   };
 
-  // --- getMessages function ---
   const getMessages = async () => {
     if (chatroom == null) {
       setMessages([]);
       return;
     }
     for (let mem of chatroom.members) {
-      if (mem != userId) {
+      if (mem !== userId) {
         setChatMember(mem);
         break;
       }
@@ -245,9 +243,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     let response;
     try {
       response = await axios.get(`${apiroot}/message/${chatroom._id}`, {
-        headers: {
-          Authorization: sessionStorage.getItem("JWT"),
-        },
+        headers: { Authorization: sessionStorage.getItem("JWT") },
       });
     } catch (err) {
       toast.error("Error getting messages. Check Console");
@@ -274,7 +270,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     }, 10);
   };
 
-  // --- sendMessage function ---
   const sendMessage = async (values) => {
     const timestamp = new Date().toISOString();
     const provisionalId = "pending_" + new Date().getTime();
