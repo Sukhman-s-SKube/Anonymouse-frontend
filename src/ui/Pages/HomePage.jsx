@@ -10,6 +10,12 @@ import { Chatroom } from "@/Components/Chatroom/Chatroom"
 import { Sidebar } from "@/Components/Sidebar/Sidebar"
 import { Button } from "@/Components/ui/button";
 import { NewChat } from "@/Components/Sidebar/NewChat";
+import { ChatNotifications } from "@/Components/Notifications/ChatNotifications";
+import { SettingsModal } from "@/Components/Settings/SettingsModal";
+
+import { ThemeProvider } from "styled-components";
+import { lightTheme, darkTheme } from "@/Components/ui/themes"; 
+
 
 export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     const [socket, setSocket] = useState();
@@ -18,6 +24,56 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     const [msgNotifs, setMsgNotifs] = useState({});
     const [addNewChatToggle, setAddNewChatToggle] = useState(false);
     const [newChatCreated, setNewChatCreated] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
+    const [darkMode, setDarkMode] = useState(false);
+    const currentTheme = darkMode ? darkTheme : lightTheme;
+    const [showSidebarContent, setShowSidebarContent] = useState(true);
+
+    useEffect(() => {
+      const storedPreference = localStorage.getItem('darkMode');
+      if (storedPreference === 'true') {
+        setDarkMode(true);
+      } else {
+        setDarkMode(false);
+      }
+    }, []);
+    
+
+    const toggleDarkMode = () => {
+      setDarkMode((prevMode) => {
+        const newMode = !prevMode;
+        localStorage.setItem('darkMode', newMode ? 'true' : 'false');
+        return newMode;
+      });
+    };
+
+    const handleDeleteChatroom = async (chatroomId) => {
+      try {
+        await axios.delete(`${apiroot}/chatroom/${chatroomId}`, {
+          headers: {
+            Authorization: sessionStorage.getItem("JWT"),
+          },
+        });
+        toast.success(`Chatroom ${chatroomId} successfully deleted.`);
+        
+        if (window.electron && window.electron.deleteMsgs) {
+          await window.electron.deleteMsgs(chatroomId);
+        }
+        
+        setChatrooms((prev) => prev.filter((room) => room._id !== chatroomId));
+        
+        if (currChatroom && currChatroom._id === chatroomId) {
+          setCurrChatroom((prevChatrooms) => {
+            const updatedChatrooms = chatrooms.filter((room) => room._id !== chatroomId);
+            return updatedChatrooms.length > 0 ? updatedChatrooms[0] : null;
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to delete chatroom.");
+      }
+    };
+    
 
     useEffect(() => {
         async function setupSocket() {
@@ -85,6 +141,18 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
         refreshSideBar();
     }, [newChatCreated]);
 
+    const openNewChat = () => {
+      setShowSidebarContent(false);
+      setAddNewChatToggle(true);
+    };
+
+    const closeNewChat = () => {
+      setAddNewChatToggle(false);
+      setTimeout(() => {
+        setShowSidebarContent(true);
+      }, 300); 
+    };
+
     const sendDHKeysRequest = async (keys) => {
         let response;
         try {
@@ -127,13 +195,72 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
         console.log(addNewChat);
     }
 
-    return(
-        <div className="flex flex-row h-screen bg-slate-50 text-neutral-800 relative overflow-hidden">
-            <NewChat isOpen={addNewChatToggle} toggle={setAddNewChatToggle} apiroot={apiroot} setNewChatCreated={setNewChatCreated} setCurrChatroom={setCurrChatroom} />
-            <Sidebar username={username} chatrooms={chatrooms} currChatroom={currChatroom} setCurrChatroom={setCurrChatroom} msgNotifs={msgNotifs} setAddNewChat={setAddNewChatToggle}/>
-            <Chatroom chatroom={currChatroom} userId={userId} socket={socket} setMsgNotifs={setMsgNotifs} apiroot={apiroot}/>
-            {/* <Button onClick={test}></Button> */}
-            <Button className="fixed top-[10px] right-[10px] py-[1px] px-[10px] bg-red-600 hover:bg-red-700" onClick={logout}><Link to="/">Log out</Link></Button>
-        </div>
-    )
-};
+    return (
+        <ThemeProvider theme={currentTheme}>
+          <div className={`flex flex-row h-screen relative overflow-hidden ${darkMode ? 'dark' : ''}`}>
+            <NewChat
+              isOpen={addNewChatToggle}
+              toggle={closeNewChat} 
+              apiroot={apiroot}
+              setNewChatCreated={setNewChatCreated}
+              setCurrChatroom={setCurrChatroom}
+            />
+            <Sidebar
+              username={username}
+              chatrooms={chatrooms}
+              currChatroom={currChatroom}
+              setCurrChatroom={(room) => {
+                setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
+                setCurrChatroom(room);
+              }}
+              msgNotifs={msgNotifs}
+              setAddNewChat={openNewChat}
+              isNewChatOpen={addNewChatToggle}  
+              darkMode={darkMode}
+              setMsgNotifs={setMsgNotifs}
+              showContent={showSidebarContent}
+              onDeleteChatroom={handleDeleteChatroom}
+            />
+            <Chatroom
+              chatroom={currChatroom}
+              userId={userId}
+              socket={socket}
+              setMsgNotifs={setMsgNotifs}
+              apiroot={apiroot}
+              onDeleteChatroom={handleDeleteChatroom}
+            />
+            {socket && (
+              <ChatNotifications
+                socket={socket}
+                userId={userId}
+                currentChatroomId={currChatroom ? currChatroom._id : undefined}
+                chatrooms={chatrooms}
+                setMsgNotifs={setMsgNotifs}
+              />
+            )}
+            <div className="fixed top-[10px] right-[10px] flex gap-2">
+              <Button
+                variant="settings"
+                onClick={() => setShowSettings(true)}
+              >
+                Settings
+              </Button>
+              <Button
+                variant="logout"
+                onClick={() => socket.disconnect()}
+              >
+                <Link to="/">Log out</Link>
+              </Button>
+            </div>
+            {showSettings && (
+              <SettingsModal
+                onClose={() => setShowSettings(false)}
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                apiroot={apiroot}
+              />
+            )}
+          </div>
+        </ThemeProvider>
+      );
+    };
