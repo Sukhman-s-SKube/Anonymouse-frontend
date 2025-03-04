@@ -49,7 +49,29 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
                 
                 await sendDHKeysRequest(keys)
                 await getChatroomsRequest(socket)
+
+                socket.on("newChatroom", (chatroomData) => {
+                    setChatrooms((prevChatrooms) => [...prevChatrooms, chatroomData]);
+                    //setNewChatCreated(true); uncomment this incase of sidebar not updating correctly
+    
+                    socket.emit("joinRoom", { chatroomId: chatroomData._id });
+    
+                    toast.info(`New chatroom created with ${chatroomData.name}`);
+                });
+
+                socket.on("deletedChatroom", (chatroomId) => {
+                    setChatrooms((prevChatrooms) => 
+                        prevChatrooms.filter(chatroom => chatroom._id !== chatroomId["message"])
+                    );
+    
+                    setCurrChatroom((prev) => (prev?._id === chatroomId["message"] ? null : prev));
+                });
             });
+            
+            return () => {
+                socket.off("newChatroom");
+                socket.off("deletedChatroom");
+            };
         }
     }, [socket]);
 
