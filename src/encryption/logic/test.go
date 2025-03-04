@@ -10,11 +10,13 @@ import (
 	"crypto/sha256"
 	"crypto/aes"
 	"crypto/cipher"
+	"math/big"
 	"bytes"
 	"hash"
 	"math"
 	"io"
 	"golang.org/x/crypto/hkdf"
+	"golang.org/x/crypto/curve25519"
 )
 
 func main() {
@@ -34,9 +36,6 @@ func main() {
 		fmt.Println(b64(keys[i])) //base64 representation
 	}
 	*/
-
-	basePoint = make([]byte, 32)
-	basePoint[0] = 9
 
 	alice := Person{name: "alice"}
 	alice.key_gen()
@@ -168,7 +167,6 @@ func print_ratchet_diff(alice, bob Person){
 }
 
 var keySize = 32
-var basePoint []byte
 var p = math.Pow(2, 255) - 19
 type Ratchet struct{
 	state []byte
@@ -198,19 +196,59 @@ func (person *Person) key_gen(){
 	person.ScK, _ = curve.GenerateKey(rand.Reader)
 	person.OPK, _ = curve.GenerateKey(rand.Reader)
 
-	hash := sha256.New()
-	c := hash.Sum(append(append(person.ScK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...), basePoint...))
-	x := (binary.BigEndian.Uint64(c) * binary.BigEndian.Uint64(person.IK.Bytes()) + binary.BigEndian.Uint64(person.ScK.Bytes())) % uint64(p)
-	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, x)
-	person.x = b
-	person.schnorrProof = append(person.schnorrProof, basePoint, person.IK.PublicKey().Bytes(), person.ScK.PublicKey().Bytes(), person.x)
-	// fmt.Println(person.schnorrProof)
+	c := sha256.Sum256(append(append(person.ScK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...), curve25519.Basepoint...))
+	cArray := c[:]
+	xMul, err := curve25519.X25519(cArray, person.IK.Bytes())
+	if err != nil {
+		fmt.Println("err: ", err)
+	}
+	xNum := new(big.Int)
+	xNum.SetBytes(xMul[:])
+	scKNum := new(big.Int)
+	scKNum.SetBytes(person.ScK.Bytes()[:])
+	bigP := new(big.Float)
+	bigP.SetFloat64(p)
+	bigIntP := new(big.Int)
+	bigP.Int(bigIntP)
+	xNum.Add(xNum, scKNum)
+	// x := (xNum + scKNum)
+	bigMod := new(big.Int)
+	bigMod = bigMod.Mod(xNum, bigIntP)
+	// fmt.Println(xMul)
+	// fmt.Println(b16(xMul))
+	// fmt.Println(int(b16(xMul)))
+	// fmt.Println(binary.BigEndian.Uint64(xMul))
+	// fmt.Println()
+	// fmt.Println(binary.BigEndian.Uint64(person.ScK.Bytes()))
+	// fmt.Println(x)
+	// fmt.Println()
+	// b := make([]byte, keySize)
+	// binary.BigEndian.PutUint64(b, binary.BigEndian.Uint64(xMul))
+	person.x = bigMod.Bytes()
+	person.schnorrProof = append(person.schnorrProof, curve25519.Basepoint, person.IK.PublicKey().Bytes(), person.ScK.PublicKey().Bytes(), person.x)
+	fmt.Println(person.x)
+	fmt.Println()
+	xG, err := curve25519.X25519(person.x, curve25519.Basepoint)
+	if err != nil {
+		fmt.Println("err: ", err)
+	}
+	fmt.Println(xG)
 	
-	person.myDH, _ = curve.GenerateKey(rand.Reader)
+	fmt.Println()
+	cIK, err := curve25519.X25519(cArray, person.IK.PublicKey().Bytes())
+	if err != nil {
+		fmt.Println("err: ", err)
+	}
+	fmt.Println(cIK)
+	//work here
+	// s := (binary.BigEndian.Uint64(cIK) + binary.BigEndian.Uint64(person.ScK.Bytes())) % uint64(p)
+	// sG := make([]byte, keySize)
+	// binary.BigEndian.PutUint64(sG, s)
+	// fmt.Println(sG)
 
-	priv, _ := curve.NewPrivateKey(person.x[:])
+	person.myDH, _ = curve.GenerateKey(rand.Reader)
 }
+
 
 func (person *Person) X3DH_send(otherPerson Person){
 	person.Xdh1, _ = person.IK.ECDH(otherPerson.ScK.PublicKey())
