@@ -3,9 +3,23 @@ import { MdOutlineAddBox } from "react-icons/md";
 import { Button } from "@/Components/ui/button";
 import ConfirmModal from "../Chatroom/ConfirmModal";
 
+const Spinner = () => (
+  <div className="flex items-center justify-center py-4">
+    <svg
+      className="animate-spin h-6 w-6 text-white"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none" viewBox="0 0 24 24"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+    </svg>
+  </div>
+);
+
 export const Sidebar = ({
   username,
   chatrooms,
+  loadingChatrooms, 
   msgNotifs,
   currChatroom,
   setCurrChatroom,
@@ -16,7 +30,6 @@ export const Sidebar = ({
   showContent,
   onDeleteChatroom, 
 }) => {
-  // State to track which chatroom is being considered for deletion.
   const [chatToDelete, setChatToDelete] = useState(null);
 
   const handleDeleteClick = (roomId) => {
@@ -24,7 +37,9 @@ export const Sidebar = ({
   };
 
   const confirmDeletion = () => {
-    onDeleteChatroom(chatToDelete);
+    if (typeof onDeleteChatroom === "function") {
+      onDeleteChatroom(chatToDelete);
+    }
     setChatToDelete(null);
   };
 
@@ -45,32 +60,35 @@ export const Sidebar = ({
             />
           </div>
           <div className="mt-[5px]">
-            {chatrooms == null || chatrooms.length === 0
-              ? 'No chatrooms to show'
-              : chatrooms
-                  // Exclude the chatroom that is pending deletion.
-                  .filter((room) => room._id !== chatToDelete)
-                  .map((room) => (
-                    <div key={room._id} className="flex items-center">
-                      <Button
-                        variant={currChatroom === room ? "selected" : "inverse"}
-                        className="flex-1 my-[10px] text-base"
-                        onClick={() => {
-                          setCurrChatroom(room);
-                          setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
-                        }}
-                      >
-                        {room.name}
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        className="ml-2"
-                        onClick={() => handleDeleteClick(room._id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  ))}
+            {loadingChatrooms ? (
+              <Spinner />
+            ) : chatrooms == null || chatrooms.length === 0 ? (
+              "No chatrooms to show"
+            ) : (
+              chatrooms
+                .filter((room) => room._id !== chatToDelete)
+                .map((room) => (
+                  <div key={room._id} className="flex items-center">
+                    <Button
+                      variant={currChatroom === room ? "selected" : "inverse"}
+                      className="flex-1 my-[10px] text-base"
+                      onClick={() => {
+                        setCurrChatroom(room);
+                        setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
+                      }}
+                    >
+                      {room.name}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="ml-2"
+                      onClick={() => handleDeleteClick(room._id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                ))
+            )}
           </div>
         </>
       )}
