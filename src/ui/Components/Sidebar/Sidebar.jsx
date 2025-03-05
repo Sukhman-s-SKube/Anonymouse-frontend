@@ -8,10 +8,15 @@ const Spinner = () => (
     <svg
       className="animate-spin h-6 w-6 text-white"
       xmlns="http://www.w3.org/2000/svg"
-      fill="none" viewBox="0 0 24 24"
+      fill="none"
+      viewBox="0 0 24 24"
     >
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      ></path>
     </svg>
   </div>
 );
@@ -32,13 +37,13 @@ export const Sidebar = ({
 }) => {
   const [chatToDelete, setChatToDelete] = useState(null);
 
-  const handleDeleteClick = (roomId) => {
-    setChatToDelete(roomId);
+  const handleDeleteClick = (room) => {
+    setChatToDelete(room);
   };
 
   const confirmDeletion = () => {
-    if (typeof onDeleteChatroom === "function") {
-      onDeleteChatroom(chatToDelete);
+    if (typeof onDeleteChatroom === "function" && chatToDelete) {
+      onDeleteChatroom(chatToDelete.id);
     }
     setChatToDelete(null);
   };
@@ -65,36 +70,34 @@ export const Sidebar = ({
             ) : chatrooms == null || chatrooms.length === 0 ? (
               "No chatrooms to show"
             ) : (
-              chatrooms
-                .filter((room) => room._id !== chatToDelete)
-                .map((room) => (
-                  <div key={room._id} className="flex items-center">
-                    <Button
-                      variant={currChatroom === room ? "selected" : "inverse"}
-                      className="flex-1 my-[10px] text-base"
-                      onClick={() => {
-                        setCurrChatroom(room);
-                        setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
-                      }}
-                    >
-                      {room.name}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      className="ml-2"
-                      onClick={() => handleDeleteClick(room._id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                ))
+              chatrooms.map((room) => (
+                <div key={room._id} className="flex items-center">
+                  <Button
+                    variant={currChatroom === room ? "selected" : "inverse"}
+                    className="flex-1 my-[10px] text-base"
+                    onClick={() => {
+                      setCurrChatroom(room);
+                      setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
+                    }}
+                  >
+                    {room.name}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="ml-2"
+                    onClick={() => handleDeleteClick({ id: room._id, name: room.name })}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              ))
             )}
           </div>
         </>
       )}
       {chatToDelete && (
         <ConfirmModal
-          message="Are you sure you want to delete this chatroom? This will delete all messages for everyone."
+          message={`Are you sure you want to delete the chatroom "${chatToDelete.name}"? This will delete all messages for everyone.`}
           onConfirm={confirmDeletion}
           onCancel={cancelDeletion}
         />

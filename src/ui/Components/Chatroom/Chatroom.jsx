@@ -29,6 +29,10 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     resolver: zodResolver(formSchema),
     defaultValues: { msg: "" },
   });
+  
+  useEffect(() => {
+    setMessages([]);
+  }, [chatroom]);
 
   useEffect(() => {
     if (socket != null && chatroom != null) {
