@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"encoding/binary"
+	// "encoding/binary"
 	"encoding/base64"
 	"encoding/hex"
 	"crypto/ecdh"
@@ -167,7 +167,9 @@ func print_ratchet_diff(alice, bob Person){
 }
 
 var keySize = 32
-var p = math.Pow(2, 255) - 19
+var pF = math.Pow(2, 255) - 19
+var p = new(big.Int)
+var _, _ = new(big.Float).SetFloat64(pF).Int(p)
 type Ratchet struct{
 	state []byte
 	next []byte
@@ -197,49 +199,58 @@ func (person *Person) key_gen(){
 	person.OPK, _ = curve.GenerateKey(rand.Reader)
 
 	c := sha256.Sum256(append(append(person.ScK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...), curve25519.Basepoint...))
-	cArray := c[:]
-	xMul, err := curve25519.X25519(cArray, person.IK.Bytes())
+	cNum := new(big.Int).SetBytes(c[:])
+	cMod := new(big.Int).Mod(cNum, p)
+	// xMul, err := curve25519.X25519(c[:], person.IK.Bytes())
+	// if err != nil {
+		// 	fmt.Println("err: ", err)
+		// }
+		
+	xMul := new(big.Int).SetBytes(cMod.Bytes())
+	ikNum := new(big.Int).SetBytes(person.IK.Bytes()[:])
+	xMul.Mul(xMul, ikNum)
+	// xNum := new(big.Int).SetBytes(xMul[:])
+	scKNum := new(big.Int).SetBytes(person.ScK.Bytes()[:])
+	xMul.Add(xMul, scKNum)
+	bigMod := new(big.Int).Mod(xMul, p)
+
+	person.x = bigMod.Bytes()
+	for len(person.x) < 32 {
+		person.x = append([]byte{0}, person.x...)
+	}
+	fmt.Println(len(person.x))
+	fmt.Println(person.x)
+	fmt.Println()
+	// 9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	// person.schnorrProof = append(person.schnorrProof, curve25519.Basepoint, person.IK.PublicKey().Bytes(), person.ScK.PublicKey().Bytes(), person.x)
+	// 148,82,156,147,219,75,41,147,63,124,134,21,102,138,155,219,26,12,30,26,86,68,83,138,46,215,40,248,210,34,244
+
+	cIK, err := curve25519.X25519(cMod.Bytes(), person.IK.PublicKey().Bytes())
 	if err != nil {
 		fmt.Println("err: ", err)
 	}
-	xNum := new(big.Int)
-	xNum.SetBytes(xMul[:])
-	scKNum := new(big.Int)
-	scKNum.SetBytes(person.ScK.Bytes()[:])
-	bigP := new(big.Float)
-	bigP.SetFloat64(p)
-	bigIntP := new(big.Int)
-	bigP.Int(bigIntP)
-	xNum.Add(xNum, scKNum)
-	// x := (xNum + scKNum)
-	bigMod := new(big.Int)
-	bigMod = bigMod.Mod(xNum, bigIntP)
-	// fmt.Println(xMul)
-	// fmt.Println(b16(xMul))
-	// fmt.Println(int(b16(xMul)))
-	// fmt.Println(binary.BigEndian.Uint64(xMul))
-	// fmt.Println()
-	// fmt.Println(binary.BigEndian.Uint64(person.ScK.Bytes()))
-	// fmt.Println(x)
-	// fmt.Println()
-	// b := make([]byte, keySize)
-	// binary.BigEndian.PutUint64(b, binary.BigEndian.Uint64(xMul))
-	person.x = bigMod.Bytes()
-	person.schnorrProof = append(person.schnorrProof, curve25519.Basepoint, person.IK.PublicKey().Bytes(), person.ScK.PublicKey().Bytes(), person.x)
-	fmt.Println(person.x)
+	fmt.Println(len(cIK))
+	fmt.Println(cIK)
 	fmt.Println()
+	cIKNum := new(big.Int).SetBytes(cIK[:])
+	scPKNum := new(big.Int).SetBytes(person.ScK.PublicKey().Bytes()[:])
+	cIKNum.Add(cIKNum, scPKNum)
+	cIKNum.Mod(cIKNum, p)
+	cIKA := cIKNum.Bytes()
+	for len(cIKA) < 32 {
+		cIKA = append([]byte{0}, cIKA...)
+	}
+	fmt.Println(len(cIKA))
+	fmt.Println(cIKA)
+
 	xG, err := curve25519.X25519(person.x, curve25519.Basepoint)
 	if err != nil {
 		fmt.Println("err: ", err)
 	}
+	fmt.Println(len(xG))
 	fmt.Println(xG)
-	
 	fmt.Println()
-	cIK, err := curve25519.X25519(cArray, person.IK.PublicKey().Bytes())
-	if err != nil {
-		fmt.Println("err: ", err)
-	}
-	fmt.Println(cIK)
+	fmt.Println()
 	//work here
 	// s := (binary.BigEndian.Uint64(cIK) + binary.BigEndian.Uint64(person.ScK.Bytes())) % uint64(p)
 	// sG := make([]byte, keySize)
