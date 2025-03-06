@@ -261,6 +261,56 @@ func (person *Person) key_gen(){
 	*/
 }
 
+/*
+B	convert_mont(9)
+I	(x=0, y=1)
+p	2255 - 19
+q	2252 + 27742317777372353535851937790883648493
+c	8
+d	-121665 / 121666 (mod p)
+A	486662
+n	2
+|p|	255
+|q|	253
+b	256
+
+xeddsa_sign(k, M, Z):
+    A, a = calculate_key_pair(k)
+    r = hash1(a || M || Z) (mod q)
+    R = rB
+    h = hash(R || A || M) (mod q)
+    s = r + ha (mod q)
+    return R || s
+
+calculate_key_pair(k):
+    E = kB
+    A.y = E.y
+    A.s = 0
+    if E.s == 1:
+        a = -k (mod q)
+    else:
+        a = k (mod q)
+    return A, a
+
+xeddsa_verify(u, M, (R || s)):
+    if u >= p or R.y >= 2|p| or s >= 2|q|:
+        return false
+    A = convert_mont(u)
+    if not on_curve(A):
+        return false
+    h = hash(R || A || M) (mod q)
+    Rcheck = sB - hA
+    if bytes_equal(R, Rcheck):
+        return true
+    return false
+
+convert_mont(u):
+    umasked = u (mod 2|p|)
+    P.y = u_to_y(umasked)
+    P.s = 0
+    return P
+*/
+
 func (person *Person) X3DH_send(otherPerson Person){
 	person.Xdh1, _ = person.IK.ECDH(otherPerson.ScK.PublicKey())
 	person.Xdh2, _ = person.EK.ECDH(otherPerson.IK.PublicKey())
