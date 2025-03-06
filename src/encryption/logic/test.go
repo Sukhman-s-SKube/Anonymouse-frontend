@@ -16,8 +16,7 @@ import (
 	"math"
 	"io"
 	"golang.org/x/crypto/hkdf"
-	"golang.org/x/crypto/curve25519"
-
+	// "golang.org/x/crypto/curve25519"
 )
 
 func main() {
@@ -198,7 +197,8 @@ func (person *Person) key_gen(){
 	person.EK, _ = curve.GenerateKey(rand.Reader)
 	person.ScK, _ = curve.GenerateKey(rand.Reader)
 	person.OPK, _ = curve.GenerateKey(rand.Reader)
-
+	person.myDH, _ = curve.GenerateKey(rand.Reader)
+	/*
 	c := sha256.Sum256(append(append(person.ScK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...), curve25519.Basepoint...))
 	// cNum := new(big.Int).SetBytes(c[:])
 	// cNum.Mod(cNum, p)
@@ -258,10 +258,8 @@ func (person *Person) key_gen(){
 	fmt.Println(xG)
 	fmt.Println()
 	fmt.Println()
-
-	person.myDH, _ = curve.GenerateKey(rand.Reader)
+	*/
 }
-
 
 func (person *Person) X3DH_send(otherPerson Person){
 	person.Xdh1, _ = person.IK.ECDH(otherPerson.ScK.PublicKey())
