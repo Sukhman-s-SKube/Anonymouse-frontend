@@ -17,6 +17,7 @@ import (
 	"io"
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/curve25519"
+
 )
 
 func main() {
@@ -199,22 +200,26 @@ func (person *Person) key_gen(){
 	person.OPK, _ = curve.GenerateKey(rand.Reader)
 
 	c := sha256.Sum256(append(append(person.ScK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...), curve25519.Basepoint...))
-	cNum := new(big.Int).SetBytes(c[:])
-	cMod := new(big.Int).Mod(cNum, p)
+	// cNum := new(big.Int).SetBytes(c[:])
+	// cNum.Mod(cNum, p)
 	// xMul, err := curve25519.X25519(c[:], person.IK.Bytes())
 	// if err != nil {
 		// 	fmt.Println("err: ", err)
 		// }
 		
-	xMul := new(big.Int).SetBytes(cMod.Bytes())
+	xMul := new(big.Int).SetBytes(c[:])
+	xMul.Mod(xMul, p)
 	ikNum := new(big.Int).SetBytes(person.IK.Bytes()[:])
+	ikNum.Mod(ikNum, p)
 	xMul.Mul(xMul, ikNum)
+	xMul.Mod(xMul, p)
 	// xNum := new(big.Int).SetBytes(xMul[:])
 	scKNum := new(big.Int).SetBytes(person.ScK.Bytes()[:])
+	scKNum.Mod(scKNum, p)
 	xMul.Add(xMul, scKNum)
-	bigMod := new(big.Int).Mod(xMul, p)
+	xMul.Mod(xMul, p)
 
-	person.x = bigMod.Bytes()
+	person.x = xMul.Bytes()
 	for len(person.x) < 32 {
 		person.x = append([]byte{0}, person.x...)
 	}
@@ -225,7 +230,7 @@ func (person *Person) key_gen(){
 	// person.schnorrProof = append(person.schnorrProof, curve25519.Basepoint, person.IK.PublicKey().Bytes(), person.ScK.PublicKey().Bytes(), person.x)
 	// 148,82,156,147,219,75,41,147,63,124,134,21,102,138,155,219,26,12,30,26,86,68,83,138,46,215,40,248,210,34,244
 
-	cIK, err := curve25519.X25519(cMod.Bytes(), person.IK.PublicKey().Bytes())
+	cIK, err := curve25519.X25519(c[:], person.IK.PublicKey().Bytes())
 	if err != nil {
 		fmt.Println("err: ", err)
 	}
@@ -233,7 +238,9 @@ func (person *Person) key_gen(){
 	fmt.Println(cIK)
 	fmt.Println()
 	cIKNum := new(big.Int).SetBytes(cIK[:])
+	cIKNum.Mod(cIKNum, p)
 	scPKNum := new(big.Int).SetBytes(person.ScK.PublicKey().Bytes()[:])
+	scPKNum.Mod(scPKNum, p)
 	cIKNum.Add(cIKNum, scPKNum)
 	cIKNum.Mod(cIKNum, p)
 	cIKA := cIKNum.Bytes()
@@ -251,11 +258,6 @@ func (person *Person) key_gen(){
 	fmt.Println(xG)
 	fmt.Println()
 	fmt.Println()
-	//work here
-	// s := (binary.BigEndian.Uint64(cIK) + binary.BigEndian.Uint64(person.ScK.Bytes())) % uint64(p)
-	// sG := make([]byte, keySize)
-	// binary.BigEndian.PutUint64(sG, s)
-	// fmt.Println(sG)
 
 	person.myDH, _ = curve.GenerateKey(rand.Reader)
 }
