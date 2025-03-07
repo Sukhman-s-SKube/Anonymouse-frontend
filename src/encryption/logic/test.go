@@ -17,7 +17,6 @@ import (
 	"math"
 	"io"
 	"golang.org/x/crypto/hkdf"
-	// "golang.org/x/crypto/curve25519"
 )
 
 func main() {
@@ -170,9 +169,6 @@ func print_ratchet_diff(alice, bob Person){
 }
 
 var keySize = 32
-var pF = math.Pow(2, 255) - 19
-var p = new(big.Int)
-var _, _ = new(big.Float).SetFloat64(pF).Int(p)
 type Ratchet struct{
 	state []byte
 	next []byte
