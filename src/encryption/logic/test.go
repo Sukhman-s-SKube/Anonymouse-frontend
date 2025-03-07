@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/elliptic"
 	"math/big"
 	"bytes"
 	"hash"
@@ -36,6 +37,8 @@ func main() {
 		fmt.Println(b64(keys[i])) //base64 representation
 	}
 	*/
+
+	test()
 
 	alice := Person{name: "alice"}
 	alice.key_gen()
@@ -190,126 +193,57 @@ type Person struct{
 	otherDH *ecdh.PublicKey
 }
 
+func test(){
+	curveP521 := ecdh.P521()
+	ik, _ := curveP521.GenerateKey(rand.Reader)
+	a, _ := curveP521.GenerateKey(rand.Reader)
 
-func (person *Person) key_gen(){
-	curve := ecdh.X25519()
-	person.IK, _ = curve.GenerateKey(rand.Reader)
-	person.EK, _ = curve.GenerateKey(rand.Reader)
-	person.ScK, _ = curve.GenerateKey(rand.Reader)
-	person.OPK, _ = curve.GenerateKey(rand.Reader)
-	person.myDH, _ = curve.GenerateKey(rand.Reader)
-	/*
-	c := sha256.Sum256(append(append(person.ScK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...), curve25519.Basepoint...))
-	// cNum := new(big.Int).SetBytes(c[:])
-	// cNum.Mod(cNum, p)
-	// xMul, err := curve25519.X25519(c[:], person.IK.Bytes())
-	// if err != nil {
-		// 	fmt.Println("err: ", err)
-		// }
-		
-	xMul := new(big.Int).SetBytes(c[:])
-	xMul.Mod(xMul, p)
-	ikNum := new(big.Int).SetBytes(person.IK.Bytes()[:])
-	ikNum.Mod(ikNum, p)
-	xMul.Mul(xMul, ikNum)
-	xMul.Mod(xMul, p)
-	// xNum := new(big.Int).SetBytes(xMul[:])
-	scKNum := new(big.Int).SetBytes(person.ScK.Bytes()[:])
-	scKNum.Mod(scKNum, p)
-	xMul.Add(xMul, scKNum)
-	xMul.Mod(xMul, p)
+	IKx, IKy := elliptic.Unmarshal(elliptic.P521(), ik.PublicKey().Bytes()) 
+	Ax, Ay := elliptic.Unmarshal(elliptic.P521(), a.PublicKey().Bytes()) 
+	
+	c := sha256.Sum256(append(append(append(append(append(Ax.Bytes(), Ay.Bytes()...), IKx.Bytes()...), IKy.Bytes()...), elliptic.P521().Params().Gx.Bytes()...), elliptic.P521().Params().Gy.Bytes()...))
 
-	person.x = xMul.Bytes()
-	for len(person.x) < 32 {
-		person.x = append([]byte{0}, person.x...)
-	}
-	fmt.Println(len(person.x))
-	fmt.Println(person.x)
-	fmt.Println()
-	// 9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	// person.schnorrProof = append(person.schnorrProof, curve25519.Basepoint, person.IK.PublicKey().Bytes(), person.ScK.PublicKey().Bytes(), person.x)
-	// 148,82,156,147,219,75,41,147,63,124,134,21,102,138,155,219,26,12,30,26,86,68,83,138,46,215,40,248,210,34,244
+	cNum := new(big.Int).SetBytes(c[:])
+	ikNum := new(big.Int).SetBytes(ik.Bytes())
+	aNum := new(big.Int).SetBytes(a.Bytes())
+	x := new(big.Int).Mod(aNum.Add(cNum.Mul(cNum, ikNum), aNum), elliptic.P521().Params().N)
 
-	cIK, err := curve25519.X25519(c[:], person.IK.PublicKey().Bytes())
-	if err != nil {
-		fmt.Println("err: ", err)
-	}
-	fmt.Println(len(cIK))
-	fmt.Println(cIK)
-	fmt.Println()
-	cIKNum := new(big.Int).SetBytes(cIK[:])
-	cIKNum.Mod(cIKNum, p)
-	scPKNum := new(big.Int).SetBytes(person.ScK.PublicKey().Bytes()[:])
-	scPKNum.Mod(scPKNum, p)
-	cIKNum.Add(cIKNum, scPKNum)
-	cIKNum.Mod(cIKNum, p)
-	cIKA := cIKNum.Bytes()
-	for len(cIKA) < 32 {
-		cIKA = append([]byte{0}, cIKA...)
-	}
-	fmt.Println(len(cIKA))
-	fmt.Println(cIKA)
+	xGX, xGY := elliptic.P521().ScalarBaseMult(x.Bytes())
 
-	xG, err := curve25519.X25519(person.x, curve25519.Basepoint)
-	if err != nil {
-		fmt.Println("err: ", err)
+	cIKX, cIKY := elliptic.P521().ScalarMult(IKx, IKy, c[:])
+
+	sX, sY := elliptic.P521().Add(cIKX, cIKY, Ax, Ay)
+
+	xG := elliptic.Marshal(elliptic.P521(), xGX, xGY) 
+	s := elliptic.Marshal(elliptic.P521(), sX, sY) 
+
+	xGFin, err := curveP521.NewPublicKey(xG)
+	if err != nil{
+		fmt.Println("err", err)
 	}
-	fmt.Println(len(xG))
-	fmt.Println(xG)
+	sFin, err := curveP521.NewPublicKey(s)
+	if err != nil{
+		fmt.Println("err", err)
+	}
+	
+	fmt.Println(xGFin.Bytes())
+	fmt.Println(sFin.Bytes())
+	fmt.Println(sFin.Equal(xGFin))
+	fmt.Println(xGFin.Equal(sFin))
+
 	fmt.Println()
 	fmt.Println()
-	*/
+	fmt.Println("-----------------------------------------")
 }
 
-/*
-B	convert_mont(9)
-I	(x=0, y=1)
-p	2255 - 19
-q	2252 + 27742317777372353535851937790883648493
-c	8
-d	-121665 / 121666 (mod p)
-A	486662
-n	2
-|p|	255
-|q|	253
-b	256
-
-xeddsa_sign(k, M, Z):
-    A, a = calculate_key_pair(k)
-    r = hash1(a || M || Z) (mod q)
-    R = rB
-    h = hash(R || A || M) (mod q)
-    s = r + ha (mod q)
-    return R || s
-
-calculate_key_pair(k):
-    E = kB
-    A.y = E.y
-    A.s = 0
-    if E.s == 1:
-        a = -k (mod q)
-    else:
-        a = k (mod q)
-    return A, a
-
-xeddsa_verify(u, M, (R || s)):
-    if u >= p or R.y >= 2|p| or s >= 2|q|:
-        return false
-    A = convert_mont(u)
-    if not on_curve(A):
-        return false
-    h = hash(R || A || M) (mod q)
-    Rcheck = sB - hA
-    if bytes_equal(R, Rcheck):
-        return true
-    return false
-
-convert_mont(u):
-    umasked = u (mod 2|p|)
-    P.y = u_to_y(umasked)
-    P.s = 0
-    return P
-*/
+func (person *Person) key_gen(){
+	curveP521 := ecdh.P521()
+	person.IK, _ = curveP521.GenerateKey(rand.Reader)
+	person.EK, _ = curveP521.GenerateKey(rand.Reader)
+	person.ScK, _ = curveP521.GenerateKey(rand.Reader)
+	person.OPK, _ = curveP521.GenerateKey(rand.Reader)
+	person.myDH, _ = curveP521.GenerateKey(rand.Reader)
+}
 
 func (person *Person) X3DH_send(otherPerson Person){
 	person.Xdh1, _ = person.IK.ECDH(otherPerson.ScK.PublicKey())
