@@ -14,7 +14,7 @@ import (
 	"math/big"
 	"bytes"
 	"hash"
-	"math"
+	// "math"
 	"io"
 	"golang.org/x/crypto/hkdf"
 )
@@ -37,7 +37,7 @@ func main() {
 	}
 	*/
 
-	test()
+	// test()
 
 	alice := Person{name: "alice"}
 	alice.key_gen()
@@ -176,10 +176,12 @@ type Ratchet struct{
 type Person struct{
 	name string
 
-	IK, EK, ScK, OPK *ecdh.PrivateKey
-	schnorrProof [][]byte
+	IK, EK, OPK *ecdh.PrivateKey
 	Xdh1, Xdh2, Xdh3, Xdh4 []byte
-	x, SK, AD []byte
+	SK, AD []byte
+
+	ScK *ecdh.PrivateKey
+	SchnorrSig []byte
 
 	root Ratchet
 	send Ratchet
@@ -189,48 +191,6 @@ type Person struct{
 	otherDH *ecdh.PublicKey
 }
 
-func test(){
-	curveP521 := ecdh.P521()
-	ik, _ := curveP521.GenerateKey(rand.Reader)
-	a, _ := curveP521.GenerateKey(rand.Reader)
-
-	IKx, IKy := elliptic.Unmarshal(elliptic.P521(), ik.PublicKey().Bytes()) 
-	Ax, Ay := elliptic.Unmarshal(elliptic.P521(), a.PublicKey().Bytes()) 
-	
-	c := sha256.Sum256(append(append(append(append(append(Ax.Bytes(), Ay.Bytes()...), IKx.Bytes()...), IKy.Bytes()...), elliptic.P521().Params().Gx.Bytes()...), elliptic.P521().Params().Gy.Bytes()...))
-
-	cNum := new(big.Int).SetBytes(c[:])
-	ikNum := new(big.Int).SetBytes(ik.Bytes())
-	aNum := new(big.Int).SetBytes(a.Bytes())
-	x := new(big.Int).Mod(aNum.Add(cNum.Mul(cNum, ikNum), aNum), elliptic.P521().Params().N)
-
-	xGX, xGY := elliptic.P521().ScalarBaseMult(x.Bytes())
-
-	cIKX, cIKY := elliptic.P521().ScalarMult(IKx, IKy, c[:])
-
-	sX, sY := elliptic.P521().Add(cIKX, cIKY, Ax, Ay)
-
-	xG := elliptic.Marshal(elliptic.P521(), xGX, xGY) 
-	s := elliptic.Marshal(elliptic.P521(), sX, sY) 
-
-	xGFin, err := curveP521.NewPublicKey(xG)
-	if err != nil{
-		fmt.Println("err", err)
-	}
-	sFin, err := curveP521.NewPublicKey(s)
-	if err != nil{
-		fmt.Println("err", err)
-	}
-	
-	fmt.Println(xGFin.Bytes())
-	fmt.Println(sFin.Bytes())
-	fmt.Println(sFin.Equal(xGFin))
-	fmt.Println(xGFin.Equal(sFin))
-
-	fmt.Println()
-	fmt.Println()
-	fmt.Println("-----------------------------------------")
-}
 
 func (person *Person) key_gen(){
 	curveP521 := ecdh.P521()
@@ -239,9 +199,27 @@ func (person *Person) key_gen(){
 	person.ScK, _ = curveP521.GenerateKey(rand.Reader)
 	person.OPK, _ = curveP521.GenerateKey(rand.Reader)
 	person.myDH, _ = curveP521.GenerateKey(rand.Reader)
+
+	person.SchnorrSig = schnorr_sign(person.IK, person.ScK)
+}
+
+func schnorr_sign(ik, sck *ecdh.PrivateKey) []byte{
+	ellipticP521 := elliptic.P521()
+	IKx, IKy := elliptic.Unmarshal(ellipticP521, ik.PublicKey().Bytes()) 
+	ScKx, ScKy := elliptic.Unmarshal(ellipticP521, sck.PublicKey().Bytes()) 
+	
+	c := sha256.Sum256(append(append(append(append(append(ScKx.Bytes(), ScKy.Bytes()...), IKx.Bytes()...), IKy.Bytes()...), ellipticP521.Params().Gx.Bytes()...), ellipticP521.Params().Gy.Bytes()...))
+
+	xNum := new(big.Int)
+	x := xNum.Mod(xNum.Add(xNum.Mul(new(big.Int).SetBytes(c[:]), new(big.Int).SetBytes(ik.Bytes())), new(big.Int).SetBytes(sck.Bytes())), ellipticP521.Params().N)
+	
+	return x.Bytes()
 }
 
 func (person *Person) X3DH_send(otherPerson Person){
+	if !schnorr_verify(otherPerson.IK.PublicKey().Bytes(), otherPerson.ScK.PublicKey().Bytes(), otherPerson.SchnorrSig){
+		fmt.Println("schnorr verify failed")
+	}
 	person.Xdh1, _ = person.IK.ECDH(otherPerson.ScK.PublicKey())
 	person.Xdh2, _ = person.EK.ECDH(otherPerson.IK.PublicKey())
 	person.Xdh3, _ = person.EK.ECDH(otherPerson.ScK.PublicKey())
@@ -251,12 +229,52 @@ func (person *Person) X3DH_send(otherPerson Person){
 }
 
 func (person *Person) X3DH_recv(otherPerson Person){
+	if !schnorr_verify(otherPerson.IK.PublicKey().Bytes(), otherPerson.ScK.PublicKey().Bytes(), otherPerson.SchnorrSig){
+		fmt.Println("schnorr verify failed")
+	}
 	person.Xdh1, _ = person.ScK.ECDH(otherPerson.IK.PublicKey())
-	person.Xdh3, _ = person.ScK.ECDH(otherPerson.EK.PublicKey())
 	person.Xdh2, _ = person.IK.ECDH(otherPerson.EK.PublicKey())
+	person.Xdh3, _ = person.ScK.ECDH(otherPerson.EK.PublicKey())
 	person.Xdh4, _ = person.OPK.ECDH(otherPerson.EK.PublicKey())
 	person.SK = hkdf_output(keySize, sha256.New, append(append(append(person.Xdh1, person.Xdh2...), person.Xdh3...), person.Xdh4...), nil, nil)
 	person.AD = append(otherPerson.IK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...)
+}
+
+func schnorr_verify(IK, ScK, sig []byte) bool{
+	curveP521 := ecdh.P521()
+	ellipticP521 := elliptic.P521()
+
+	IKx, IKy := elliptic.Unmarshal(ellipticP521, IK) 
+	ScKx, ScKy := elliptic.Unmarshal(ellipticP521, ScK) 
+
+	c := sha256.Sum256(append(append(append(append(append(ScKx.Bytes(), ScKy.Bytes()...), IKx.Bytes()...), IKy.Bytes()...), ellipticP521.Params().Gx.Bytes()...), ellipticP521.Params().Gy.Bytes()...))
+	cIKX, cIKY := ellipticP521.ScalarMult(IKx, IKy, c[:])
+	sharedX, sharedY := ellipticP521.Add(cIKX, cIKY, ScKx, ScKy)
+	shared := elliptic.Marshal(ellipticP521, sharedX, sharedY) 
+	sharedFin, err := curveP521.NewPublicKey(shared)
+	if err != nil{
+		fmt.Println("err", err)
+		return false
+	}
+
+	sigGX, sigGY := ellipticP521.ScalarBaseMult(sig)
+	sigG := elliptic.Marshal(ellipticP521, sigGX, sigGY) 
+	sigGFin, err := curveP521.NewPublicKey(sigG)
+	if err != nil{
+		fmt.Println("err", err)
+		return false
+	}
+
+	// fmt.Println(sigGFin.Bytes())
+	// fmt.Println(sharedFin.Bytes())
+	// fmt.Println(sharedFin.Equal(sigGFin))
+	// fmt.Println(sigGFin.Equal(sharedFin))
+
+	// fmt.Println()
+	// fmt.Println()
+	// fmt.Println("-----------------------------------------")
+
+	return sharedFin.Equal(sigGFin) && sigGFin.Equal(sharedFin)
 }
 
 
