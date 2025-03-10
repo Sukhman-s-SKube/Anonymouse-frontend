@@ -82,7 +82,7 @@ export const NewChat = ({ isOpen, toggle, apiroot, setNewChatCreated, setCurrCha
       return toast.error("Chatroom could not be created.");
     }
     console.log(response);
-    setNewChatCreated(true);
+    setNewChatCreated(response.data);
     toggle(false);
     setCurrChatroom(response.data);
   };

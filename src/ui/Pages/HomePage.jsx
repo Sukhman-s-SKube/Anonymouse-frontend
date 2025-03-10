@@ -22,7 +22,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
   const [currChatroom, setCurrChatroom] = useState();
   const [msgNotifs, setMsgNotifs] = useState({});
   const [addNewChatToggle, setAddNewChatToggle] = useState(false);
-  const [newChatCreated, setNewChatCreated] = useState(false);
+  const [newChatCreated, setNewChatCreated] = useState();
   const [showSettings, setShowSettings] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showSidebarContent, setShowSidebarContent] = useState(true);
@@ -94,6 +94,10 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
         await sendDHKeysRequest(keys);
         await getChatroomsRequest(socket);
 
+        socket.on("joinedUserRoom", (data) => {
+          console.log("joined user room:", data.roomId);
+        });
+
         socket.on("newChatroom", (chatroomData) => {
           setChatrooms((prevChatrooms) => [...prevChatrooms, chatroomData]);
           socket.emit("joinRoom", { chatroomId: chatroomData._id });
@@ -112,18 +116,22 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
         socket.off("newChatroom");
         socket.off("deletedChatroom");
       };
+    }else{
+      console.log("socket did not connnect")
     }
   }, [socket]);
 
   useEffect(() => {
-    async function refreshSideBar() {
-      if (newChatCreated) {
-        await getChatroomsRequest(socket);
-        setNewChatCreated(false);
+    console.log(newChatCreated)
+    if(newChatCreated){
+      setChatrooms((prevChatrooms) => [...prevChatrooms, newChatCreated]);
+      if (socket){
+        socket.emit("joinRoom", { chatroomId: newChatCreated._id });
       }
     }
-    refreshSideBar();
-  }, [newChatCreated]);
+    setNewChatCreated();
+    console.log(chatrooms)
+    }, [newChatCreated]);
 
   const openNewChat = () => {
     setShowSidebarContent(false);
