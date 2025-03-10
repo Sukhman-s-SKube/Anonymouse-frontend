@@ -104,12 +104,16 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
           toast.info(`New chatroom created with ${chatroomData.name}`);
         });
 
-        socket.on("deletedChatroom", (chatroomId) => {
-          setChatrooms((prevChatrooms) =>
-            prevChatrooms.filter(chatroom => chatroom._id !== chatroomId["message"])
-          );
-          setCurrChatroom((prev) => (prev?._id === chatroomId["message"] ? null : prev));
-        });
+        socket.on("chatroomDeleted", (data) => {
+            console.log("Chatroom deleted:", data);
+            setChatrooms((prevChatrooms) =>
+              prevChatrooms.filter((chatroom) => chatroom._id !== data.message)
+            );
+            setCurrChatroom((prev) =>
+              prev?._id === data.message ? null : prev
+            );
+            toast.info(`Chatroom ${data.message} was deleted.`);
+          });
       });
       
       return () => {
