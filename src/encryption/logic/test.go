@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	// "encoding/binary"
 	"encoding/base64"
 	"encoding/hex"
 	"crypto/ecdh"
@@ -14,30 +13,12 @@ import (
 	"math/big"
 	"bytes"
 	"hash"
-	// "math"
 	"io"
 	"golang.org/x/crypto/hkdf"
 )
 
 func main() {
-	/* code below used as refrence dont uncomment
-	secret := []byte{0x00, 0x01, 0x02, 0x03} // this should be the root key?
-	salt := []byte("salt") // this should be some shared constant?
-	info := []byte("hskdf example") // this should be the dh output?
 
-	Generate three 128-bit derived keys.
-	keys := hkdf_output(2, 32, sha256.New, secret, nil, nil)
-	fmt.Println(keys)
-	fmt.Println()
-	
-	for i := range keys {
-		fmt.Println(keys[i]) //byte array
-		fmt.Println(b16(keys[i])) //hex representation
-		fmt.Println(b64(keys[i])) //base64 representation
-	}
-	*/
-
-	// test()
 
 	alice := Person{name: "alice"}
 	alice.key_gen()
@@ -264,16 +245,6 @@ func schnorr_verify(IK, ScK, sig []byte) bool{
 		fmt.Println("err", err)
 		return false
 	}
-
-	// fmt.Println(sigGFin.Bytes())
-	// fmt.Println(sharedFin.Bytes())
-	// fmt.Println(sharedFin.Equal(sigGFin))
-	// fmt.Println(sigGFin.Equal(sharedFin))
-
-	// fmt.Println()
-	// fmt.Println()
-	// fmt.Println("-----------------------------------------")
-
 	return sharedFin.Equal(sigGFin) && sigGFin.Equal(sharedFin)
 }
 
@@ -289,7 +260,7 @@ func (person *Person) root_ratchet_recv(){
 }
 
 func (person *Person) dh_ratchet_send(){
-	curve := ecdh.X25519()
+	curve := ecdh.P521()
 	person.myDH, _ = curve.GenerateKey(rand.Reader)
 	dhs, _ := person.myDH.ECDH(person.otherDH)
 	person.root.root_ratchet_next(append(person.root.state, dhs...))
@@ -326,7 +297,7 @@ func (ratchet *Ratchet) chain_ratchet_next(secret []byte) {
 	ratchet.next = output[keySize:]
 }
 
-func hkdf_output (/*numKeys,*/ outputSize int, hash func() hash.Hash, secret, salt, info []byte) []byte{
+func hkdf_output (outputSize int, hash func() hash.Hash, secret, salt, info []byte) []byte{
 	hkdf_step := hkdf.New(hash, secret, salt, info)
 
 	var keys []byte
@@ -385,13 +356,5 @@ func decryptGCM(key, cipherBytes, AD []byte) string {
 	}
 
 	return string(plainBytes)
-}
-
-
-func b16(msg []byte) string {
-	return hex.EncodeToString(msg)
-}
-func b64(msg []byte) string {
-	return base64.StdEncoding.EncodeToString(msg)
 }
 
