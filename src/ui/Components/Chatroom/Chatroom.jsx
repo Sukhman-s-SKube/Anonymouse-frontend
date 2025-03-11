@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 
 import '@/Components/Chatroom/Chatroom.css';
-import { encryptMsg, decryptMsg } from '@/Logic/WasmFunctions';
+import { encryptMsg, decryptMsg, x3DHSender } from '@/Logic/WasmFunctions';
 
 import { Button } from '@/Components/ui/button';
 import { Form, FormControl, FormField, FormItem } from '@/Components/ui/form';
@@ -291,38 +291,55 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     setMessages((prevMessages) => [...prevMessages, pendingMessage]);
     form.reset();
     if (msgInputRef.current) msgInputRef.current.focus();
-    
-    let response;
-    try {
-      response = await axios.delete(`${apiroot}/user/dh_keys/${chatMember}`, {
-        headers: { Authorization: sessionStorage.getItem("JWT") },
-      });
-    } catch (err) {
-      toast.error("Sending Msg: Failed to get other user's key. Message remains pending.");
-      console.error(err);
-      return;
+
+    if (!(await window.electron.chatroomExists(chatroom._id, userId))) {
+      let response;
+      try {
+        response = await axios.get(`${apiroot}/chatroom/${chatMember}/send`, {
+          headers: { Authorization: sessionStorage.getItem("JWT") },
+        });
+      } catch(err) {
+        toast.error("Sending Msg: Failed to get other user's package. Message remains pending.");
+        console.error(err);
+        return;
+      }
+
+      let ik = await window.electron.getIdentityKey(userId);
+      let x3dh = await x3DHSender(
+                response.data.identityKey,
+                response.data.schnorrKey,
+                response.data.schnorrSig,
+                response.data.otpKey.public,
+                ik,
+                values.msg,
+                timestamp
+              );
+      x3dh = JSON.parse(x3dh);
+      if (x3dh.err != '') {
+        toast.error("Sending Msg: Failed to send message. Message remains pending.");
+        console.error(err);
+        return;
+      }
+
+      console.log(x3dh);
+      await window.electron.insertChatroom({_id: chatroom._id, name: chatroom.name, rk: x3dh.rK}, userId);
+      await window.electron.updateChatroom({sck: x3dh.sCK, privDH: x3dh.dhK.privKey}, chatroom._id, userId);
+
     }
-    const otherPubDH = response.data.popped_key.pubKey;
-    const otherPubDHId = response.data.popped_key.id;
     
-    let encData = await encryptMsg(otherPubDH, values.msg.trim(), timestamp);
-    if (encData["error"] !== "") {
-      toast.error("Sending Msg: Failed to encrypt message. Message remains pending.");
-      console.log(encData["error"]);
-      return;
-    }
-    
+    // Payload keys need to be verified with Sukhman/backend
     let payload = {
-      content: encData["cipherText"],
-      pubKey: encData["pubKey"],
-      privKeyId: otherPubDHId.toString(),
+      content: x3dh.cipherText,
+      sender: userId,
+      chatroom: chatroom._id,
+      eK: x3dh.eK.pubKey,
+      otpId: response.data.otpKey.id,
+      dhKey: x3dh.dhK.pubKey,
       timestamp,
     };
     
-    const properHash = await window.electron.sha256(
-      payload.content + payload.pubKey + payload.timestamp
-    );
-    outMsgKeys.current = { ...outMsgKeys.current, [properHash]: encData["masterSec"] };
+    const properHash = await window.electron.sha256(payload.content + payload.timestamp + payload.chatroom);
+    outMsgKeys.current = { ...outMsgKeys.current, [properHash]: x3dh.mK };
     
     setMessages((prevMessages) =>
       prevMessages.map((msg) =>

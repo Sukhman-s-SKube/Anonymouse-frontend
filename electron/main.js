@@ -125,6 +125,76 @@ ipcMain.handle("initPerson", async (event, person, userId) => {
     db.close();
 });
 
+ipcMain.handle("getIdentityKey", async (event, userId) => {
+    const db = new database(dbPath(userId));
+    // db.pragma(`key='${args[0]}'`);
+
+    const res = db.prepare("SELECT identity_priv_key FROM Person").get();
+    db.close();
+
+    return res.identity_priv_key;
+});
+
+ipcMain.handle("insertChatroom", async (event, chatroom, userId) => {
+    const db = new database(dbPath(userId));
+    // db.pragma(`key='${args[0]}'`);
+
+    const insertData = db.prepare("INSERT INTO Chatroom (mongoId, name, root_key) VALUES (?, ?, ?)").run(
+        chatroom._id,
+        chatroom.name,
+        chatroom.rk
+    );
+    db.close();
+});
+
+
+ipcMain.handle("updateChatroom", async (event, fields, chatroomId, userId) => {
+    const db = new database(dbPath(userId));
+    // db.pragma(`key='${args[0]}'`);
+    let query = "UPDATE Chatroom SET ";
+    let params = [];
+    if (fields.rk) {
+        query += `root_key = ?, `;
+        params.push(fields.rk);
+    }
+    if (fields.sck) {
+        query += `send_chain_key = ?, `;
+        params.push(fields.sck);
+    }
+    if (fields.rck) {
+        query += `receive_chain_key = ?, `;
+        params.push(fields.rck);
+    }
+    if (fields.privDH) {
+        query += `self_priv_dh = ?, `;
+        params.push(fields.privDH);
+    }
+    if (fields.pubDH) {
+        query += `other_pub_dh = ?, `;
+        params.push(fields.pubDH);
+    }
+
+    query = query.substring(0, query.length - 2)
+    query += " WHERE mongoId = ?";
+    // console.log(query);
+    params.push(chatroomId);
+
+    // db.prepare()
+    db.prepare(query).run(params);
+
+    // db.prepare(query + "WHERE mongoId = ?").run(chatroomId);
+
+    db.close();
+});
+
+ipcMain.handle("chatroomExists", async (event, chatroomId, userId) => {
+    const db = new database(dbPath(userId));
+    const chatroom = db.prepare("SELECT * FROM Chatroom WHERE mongoId = ?").get(chatroomId);
+
+    db.close();
+    return !(chatroom === undefined); 
+});
+
 ipcMain.handle("insertMsg", async (event, msg, userId) => {
     const db = new database(dbPath(userId));
     // db.pragma(`key='${args[0]}'`);
