@@ -35,7 +35,7 @@ func genOnRegister() (model.Key, model.Key, string, error){
 	return keyMarshler(ik), keyMarshler(sk), hex.EncodeToString(sig), nil
 }
 
-func ecdhSend(dhKeyB []bytes) ([]byte, model.Key{}, error){
+func ecdhSend(dhKeyB []bytes) ([]byte, model.Key, error){
 	crv := ecdh.P521()
 
 	dhKA, err := crv.GenerateKey(rand.Reader)
