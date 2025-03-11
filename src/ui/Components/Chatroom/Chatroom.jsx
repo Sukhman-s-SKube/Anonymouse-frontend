@@ -17,6 +17,19 @@ export const formSchema = z.object({
   msg: z.string().min(1),
 });
 
+const Spinner = () => (
+  <div className="flex items-center justify-center py-4">
+    <svg
+      className="animate-spin h-6 w-6 text-gray-800 dark:text-white"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none" viewBox="0 0 24 24"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+    </svg>
+  </div>
+);
+
 export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newChatMembers, chatrooms = [] }) => {
   const [messages, setMessages] = useState([]);
   const [chatMember, setChatMember] = useState("");
@@ -24,6 +37,8 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
 
   const msgInputRef = useRef(null);
   const chatBottom = useRef(null);
+
+  const [loadingMessages, setLoadingMessages] = useState(true);
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -54,14 +69,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     };
   }, [socket, chatroom]);
 
-  useEffect(() => {
-    if (!apiroot) return;
-    const pendingMessages = messages.filter((msg) => msg.pending === true);
-    pendingMessages.forEach((msg) => {
-      resendPendingMessage(msg);
-    });
-  }, [apiroot]);
-
   const readMsgReq = async (msgIds) => {
     try {
       await axios.put(`${apiroot}/message/read`, { message_ids: msgIds }, {
@@ -71,21 +78,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       console.log(err);
       toast.error("Msg In: Check console for error");
     }
-  };
-
-  const displayMsg = async (msg) => {
-    let parsedMsg = await window.electron.getMsg(msg._id);
-    if (msg.chatroom === chatroom._id) {
-      setMessages((prevMsgs) => [...prevMsgs, parsedMsg]);
-      setTimeout(() => {
-        if (chatBottom.current) {
-          chatBottom.current.scrollIntoView({ behaviour: 'smooth' });
-        }
-      }, 10);
-      return;
-    }
-    setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [msg.chatroom]: true }));
-    return;
   };
 
   const parseMessage = async (msg) => {
@@ -110,48 +102,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     }
     msg.message.content = res["plainText"];
     await window.electron.insertMsg(msg);
-  };
-
-  const resendPendingMessage = async (pendingMsg) => {
-    const timestamp = new Date(pendingMsg.timestamp);
-    try {
-      const response = await axios.delete(`${apiroot}/user/dh_keys/${chatMember}`, {
-        headers: { Authorization: sessionStorage.getItem("JWT") },
-      });
-      const otherPubDH = response.data.popped_key.pubKey;
-      const otherPubDHId = response.data.popped_key.id;
-      
-      let encData = await encryptMsg(otherPubDH, pendingMsg.content, timestamp.toISOString());
-      if (encData["error"] !== "") {
-        console.log(encData["error"]);
-        return toast.error("Resend Msg: Failed to encrypt message.");
-      }
-      
-      let payload = {
-        content: encData["cipherText"],
-        pubKey: encData["pubKey"],
-        privKeyId: otherPubDHId.toString(),
-        timestamp: timestamp.toISOString(),
-      };
-      const properHash = await window.electron.sha256(
-        payload.content + payload.pubKey + payload.timestamp
-      );
-      
-      outMsgKeys.current = { ...outMsgKeys.current, [properHash]: encData["masterSec"] };
-  
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg._id === pendingMsg._id ? { ...msg, hash: properHash, pending: false } : msg
-        )
-      );
-      
-      socket.emit("chatroomMessage", {
-        chatroomId: chatroom._id,
-        message: payload,
-      });
-    } catch (err) {
-      console.error("Resend failed", err);
-    }
   };
 
   const addMessage = async (data) => {
@@ -179,7 +129,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       });
       setTimeout(() => {
         if (chatBottom.current) {
-          chatBottom.current.scrollIntoView({ behaviour: "smooth" });
+          chatBottom.current.scrollIntoView({ behavior: "smooth" });
         }
       }, 10);
       return;
@@ -233,8 +183,10 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
   };
 
   const getMessages = async () => {
+    setLoadingMessages(true);
     if (chatroom == null) {
       setMessages([]);
+      setLoadingMessages(false);
       return;
     }
     for (let mem of chatroom.members) {
@@ -243,7 +195,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         break;
       }
     }
-
     let response;
     try {
       response = await axios.get(`${apiroot}/message/${chatroom._id}`, {
@@ -253,7 +204,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       toast.error("Error getting messages. Check Console");
       console.log(err);
     }
-
     let msgIds = [];
     if (response.data.length > 0) {
       for (let i = 0; i < response.data.length; i++) {
@@ -264,12 +214,12 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       }
       await readMsgReq(msgIds);
     }
-
     let finalChat = await window.electron.getMsgs(chatroom._id);
     setMessages(finalChat);
+    setLoadingMessages(false);
     setTimeout(() => {
       if (chatBottom.current) {
-        chatBottom.current.scrollIntoView({ behaviour: 'smooth' });
+        chatBottom.current.scrollIntoView({ behavior: 'smooth' });
       }
     }, 10);
   };
@@ -280,6 +230,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     
     const pendingMessage = {
       _id: provisionalId,
+      provisionalId: provisionalId,
       content: values.msg.trim(),
       sender: userId,
       pending: true,
@@ -290,7 +241,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     
     setMessages((prevMessages) => [...prevMessages, pendingMessage]);
     form.reset();
-    if (msgInputRef.current) msgInputRef.current.focus();
+    msgInputRef.current?.focus();
     
     let response;
     try {
@@ -317,6 +268,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       pubKey: encData["pubKey"],
       privKeyId: otherPubDHId.toString(),
       timestamp,
+      provisionalId, 
     };
     
     const properHash = await window.electron.sha256(
@@ -326,7 +278,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     
     setMessages((prevMessages) =>
       prevMessages.map((msg) =>
-        msg._id === provisionalId ? { ...msg, hash: properHash } : msg
+        msg._id === provisionalId ? { ...msg, hash: properHash, pending: false, provisional: false } : msg
       )
     );
     
@@ -340,19 +292,23 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     <div className="chatroom">
       <h1 className="text-center text-4xl font-bold mb-10 text-green-600">Chatroom</h1>
       <div className="flex-1 overflow-y-scroll p-5 box-border">
-        {messages == null || messages.length == 0
-          ? 'No chats to show'
-          : messages.map((msg) => (
-              <Message
-                content={msg.content}
-                isSender={msg.sender == userId}
-                key={msg.mongoId || msg._id}
-                pending={msg.pending}
-              />
-            ))}
+        {loadingMessages ? (
+          <Spinner />
+        ) : messages == null || messages.length === 0 ? (
+          'No chats to show'
+        ) : (
+          messages.map((msg) => (
+            <Message
+              content={msg.content}
+              isSender={msg.sender === userId}
+              key={msg.mongoId || msg._id}
+              pending={msg.pending}
+            />
+          ))
+        )}
         <div ref={chatBottom} />
       </div>
-      {chatroom == null && newChatMembers?.length == 0 ? '' : 
+      {chatroom && (
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(sendMessage)}
@@ -377,7 +333,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
             </Button>
           </form>
         </Form>
-      }
+      )}
     </div>
   );
 };
