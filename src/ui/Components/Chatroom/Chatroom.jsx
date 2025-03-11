@@ -274,6 +274,51 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     }, 10);
   };
 
+  const initMsgSend = async (timestamp, values) => {
+    let x3dh;
+    let response;
+
+    try {
+      response = await axios.get(`${apiroot}/chatroom/${chatMember}/send`, {
+        headers: { Authorization: sessionStorage.getItem("JWT") },
+      });
+    } catch(err) {
+      throw new Error(err);
+    }
+
+    console.log(response);
+
+    let ik = await window.electron.getIdentityKey(userId);
+    x3dh = await x3DHSender(
+              response.data.identityKey,
+              response.data.schnorrKey,
+              response.data.schnorrSig,
+              response.data.otpKey.public,
+              ik,
+              values.msg,
+              timestamp
+            );
+    x3dh = JSON.parse(x3dh);
+    if (x3dh.err != '') {
+      throw new Error(x3dh.err);
+    }
+
+    console.log(x3dh);
+    await window.electron.insertChatroom({_id: chatroom._id, name: chatroom.name, rk: x3dh.rK}, userId);
+    await window.electron.updateChatroom({sck: x3dh.sCK, privDH: x3dh.dhK.privKey}, chatroom._id, userId);
+    
+    return {
+      payload: {
+        content: x3dh.cipherText,
+        ephKey: x3dh.eK,
+        otpID: response.data.otpKey.id,
+        DHKey: x3dh.dhK.pubKey,
+        timestamp,
+      },
+      mK: x3dh.mK,
+    };
+  }
+
   const sendMessage = async (values) => {
     const timestamp = new Date().toISOString();
     const provisionalId = "pending_" + new Date().getTime();
@@ -292,54 +337,29 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     form.reset();
     if (msgInputRef.current) msgInputRef.current.focus();
 
+    let payload;
     if (!(await window.electron.chatroomExists(chatroom._id, userId))) {
-      let response;
       try {
-        response = await axios.get(`${apiroot}/chatroom/${chatMember}/send`, {
-          headers: { Authorization: sessionStorage.getItem("JWT") },
-        });
-      } catch(err) {
-        toast.error("Sending Msg: Failed to get other user's package. Message remains pending.");
-        console.error(err);
-        return;
-      }
-
-      let ik = await window.electron.getIdentityKey(userId);
-      let x3dh = await x3DHSender(
-                response.data.identityKey,
-                response.data.schnorrKey,
-                response.data.schnorrSig,
-                response.data.otpKey.public,
-                ik,
-                values.msg,
-                timestamp
-              );
-      x3dh = JSON.parse(x3dh);
-      if (x3dh.err != '') {
+        payload = await initMsgSend(timestamp, values);
+      } catch (err) {
         toast.error("Sending Msg: Failed to send message. Message remains pending.");
         console.error(err);
         return;
       }
-
-      console.log(x3dh);
-      await window.electron.insertChatroom({_id: chatroom._id, name: chatroom.name, rk: x3dh.rK}, userId);
-      await window.electron.updateChatroom({sck: x3dh.sCK, privDH: x3dh.dhK.privKey}, chatroom._id, userId);
-
     }
     
-    // Payload keys need to be verified with Sukhman/backend
-    let payload = {
-      content: x3dh.cipherText,
-      sender: userId,
-      chatroom: chatroom._id,
-      eK: x3dh.eK.pubKey,
-      otpId: response.data.otpKey.id,
-      dhKey: x3dh.dhK.pubKey,
-      timestamp,
-    };
+    // payload = {
+    //   content: x3dh.cipherText,
+    //   ephKey: x3dh.eK,
+    //   otpID: response.data.otpKey.id,
+    //   DHKey: x3dh.dhK.pubKey,
+    //   timestamp,
+    // };
+
+    console.log(payload);
     
-    const properHash = await window.electron.sha256(payload.content + payload.timestamp + payload.chatroom);
-    outMsgKeys.current = { ...outMsgKeys.current, [properHash]: x3dh.mK };
+    const properHash = await window.electron.sha256(payload.payload.content + payload.payload.timestamp + payload.payload.chatroom);
+    outMsgKeys.current = { ...outMsgKeys.current, [properHash]: payload.mK };
     
     setMessages((prevMessages) =>
       prevMessages.map((msg) =>
@@ -349,7 +369,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     
     socket.emit("chatroomMessage", {
       chatroomId: chatroom._id,
-      message: payload,
+      message: payload.payload,
     });
   };
 
