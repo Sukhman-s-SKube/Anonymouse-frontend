@@ -120,7 +120,11 @@ func X3DHSender(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.CipherText, result.EK, result.RK, result.SCK, result.MK, result.DHK = cipherText, eK, hex.EncodeToString(rK), hex.EncodeToString(sCK), hex.EncodeToString(mK), dhK
+	rKStr := hex.EncodeToString(rK)
+	sCKStr := hex.EncodeToString(sCK)
+	mKStr := hex.EncodeToString(mK)
+
+	result.CipherText, result.EK, result.RK, result.SCK, result.MK, result.DHK = cipherText, eK, rKStr, sCKStr, mKStr, dhK
 
 	res, _ := json.Marshal(result)
 	return string(res)
