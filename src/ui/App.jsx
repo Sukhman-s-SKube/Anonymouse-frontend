@@ -10,7 +10,7 @@ import './App.css';
 import './wasm_exec.js';
 
 
-const apiroot = 'https://se4450.duckdns.org/api';
+const apiroot = 'http://localhost:8000/api';
 
 const App = () => {
   

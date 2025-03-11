@@ -67,7 +67,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
 
   useEffect(() => {
     async function setupSocket() {
-      let tempSoc = await io("https://se4450.duckdns.org/", {
+      let tempSoc = await io("http://localhost:8000/", {
         extraHeaders: { Authorization: sessionStorage.getItem("JWT") },
       });
       setSocket(tempSoc);
@@ -80,18 +80,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
   useEffect(() => {
     if (socket != null) {
       socket.on('connect', async () => {
-        let numKeys = 100;
-        const genDHKeys = await generateDHKeys(numKeys);
-        const parsedKeys = JSON.parse(genDHKeys);
-        if (parsedKeys.err !== '') {
-          console.log(parsedKeys.err);
-          return toast.error('Gen Keys: Error generating DH Keys. Check console for error');
-        }
-
-        await window.electron.insertDHKeys(parsedKeys.keys);
-        let keys = await window.electron.getKeys(numKeys);
-        
-        await sendDHKeysRequest(keys);
         await getChatroomsRequest(socket);
 
         socket.on("joinedUserRoom", (data) => {
@@ -148,18 +136,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       setShowSidebarContent(true);
     }, 300); 
   };
-
-  const sendDHKeysRequest = async (keys) => {
-    try {
-      await axios.put(`${apiroot}/user/dh_keys`, keys, {
-        headers: { Authorization: sessionStorage.getItem("JWT") },
-      });
-    } catch (err) {
-      console.log(err);
-      return toast.error("Gen Keys: Failed to send keys to server. Check console for error");
-    }
-  };
-
+  
   const getChatroomsRequest = async (soc) => {
     setLoadingChatrooms(true);
     let response;
