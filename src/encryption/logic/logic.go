@@ -241,189 +241,213 @@ func X3DHReceiver(this js.Value, args []js.Value) interface{} {
 	return string(res)
 }
 
-// First Message Paramters (4): other_pub_DiffieHellmanKey string, rootKey string, plainText string, timestamp string
-// Paramters (3): sendingChainKey string, plainText string, timestamp string
-func Sender(this js.Value, args []js.Value) interface{} {
+// Paramters (4): other_pub_DiffieHellmanKey string, rootKey string, plainText string, timestamp string
+func SenderFirst(this js.Value, args []js.Value) interface{} {
 	var result model.SendPack
 
-	if len(args) == 4 {//first message in chain
-		dhKB, err := hex.DecodeString(args[0].String())
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-
-		rK, err := hex.DecodeString(args[1].String())
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-
-		plainText := []byte(args[2].String())
-		timestamp := []byte(args[3].String())
-
-		dhSK, dhKA, err := ecdhSend(dhKB)
-
-		rK, sCK, err := ratchetNext(append(rK, dhSK...), timestamp)
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-	
-		sCK, mK, err := ratchetNext(sCK, timestamp)
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-
-		cipherText, err := encryptGCM(mK, plainText)
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-		
-		result.CipherText, result.RK, result.SCK, result.MK, result.DHK = cipherText, rK, sCK, mK, dhKA
-	}
-	else if len(args) == 3 {//n+1 mesasge in chain
-		sCK, err := hex.DecodeString(args[0].String())
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-
-		plainText := []byte(args[1].String())
-		timestamp := []byte(args[2].String())
-
-		sCK, mK, err := ratchetNext(sCK, timestamp)
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-
-		cipherText, err := encryptGCM(mK, plainText)
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-
-		result.CipherText, result.SCK, result.MK, = cipherText, sCK, mK
-	}
-	else {
+	if len(args) != 4 {
 		result.Err = "Invalid number of args"
 		res, _ := json.Marshal(result)
+		return string(res)
 	}
+
+	dhKB, err := hex.DecodeString(args[0].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	rK, err := hex.DecodeString(args[1].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	plainText := []byte(args[2].String())
+	timestamp := []byte(args[3].String())
+
+	dhSK, dhKA, err := ecdhSend(dhKB)
+
+	rK, sCK, err := ratchetNext(append(rK, dhSK...), timestamp)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	sCK, mK, err := ratchetNext(sCK, timestamp)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	cipherText, err := encryptGCM(mK, plainText)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+	
+	result.CipherText, result.RK, result.SCK, result.MK, result.DHK = cipherText, rK, sCK, mK, dhKA
 
 	res, _ := json.Marshal(result)
 	return string(res)
 }
 
-// First Message Paramters (5): other_pub_DiffieHellmanKey string, my_priv_DiffieHellmanKey string, rootKey string, cipherText string, timestamp string
+// Paramters (3): sendingChainKey string, plainText string, timestamp string
+func Sender(this js.Value, args []js.Value) interface{} {
+	var result model.SendPack
+
+	if len(args) != 3 {
+		result.Err = "Invalid number of args"
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	sCK, err := hex.DecodeString(args[0].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	plainText := []byte(args[1].String())
+	timestamp := []byte(args[2].String())
+
+	sCK, mK, err := ratchetNext(sCK, timestamp)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	cipherText, err := encryptGCM(mK, plainText)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	result.CipherText, result.SCK, result.MK, = cipherText, sCK, mK
+	
+	res, _ := json.Marshal(result)
+	return string(res)
+}
+
+// Paramters (5): other_pub_DiffieHellmanKey string, my_priv_DiffieHellmanKey string, rootKey string, cipherText string, timestamp string
+func ReceiverFirst(this js.Value, args []js.Value) interface{} {
+	var result model.RecPack
+
+	if len(args) != 5 {
+		result.Err = "Invalid number of args"
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	dhKB, err := hex.DecodeString(args[0].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+	dhKA, err := hex.DecodeString(args[1].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+	rK, err := hex.DecodeString(args[2].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+	cipherText, err := hex.DecodeString(args[3].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	timestamp := []byte(args[4].String())
+
+	dhSK, err := ecdhRec(dhKA, dhKB)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	rK, rCK, err := ratchetNext(append(rK, dhSK...), timestamp)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	rCK, mK, err := ratchetNext(rCK, timestamp)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	plainText, err := decryptGCM(mK, cipherText)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	result.PlainText, result.RK, result.RCK, result.MK = plainText, rK, rCK, mK
+
+	res, _ := json.Marshal(result)
+	return string(res)
+}
+
 // Paramters (3): receivingChainKey string, cipherText string, timestamp string
 func Receiver(this js.Value, args []js.Value) interface{} {
 	var result model.RecPack
 
-	if len(args) == 5 {//first message in chain
-		dhKB, err := hex.DecodeString(args[0].String())
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-		dhKA, err := hex.DecodeString(args[1].String())
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-		rK, err := hex.DecodeString(args[2].String())
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-		cipherText, err := hex.DecodeString(args[3].String())
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-
-		timestamp := []byte(args[4].String())
-
-		dhSK, err := ecdhRec(dhKA, dhKB)
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-
-		rK, rCK, err := ratchetNext(append(rK, dhSK...), timestamp)
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-	
-		rCK, mK, err := ratchetNext(rCK, timestamp)
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-
-		plainText, err := decryptGCM(mK, cipherText)
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-	
-		result.PlainText, result.RK, result.RCK, result.MK = plainText, rK, rCK, mK
-	}
-	else if len(args) == 3 {//n+1 mesasge in chain
-		rCK, err := hex.DecodeString(args[0].String())
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-		cipherText, err := hex.DecodeString(args[1].String())
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-
-		timestamp := []byte(args[2].String())
-	
-		rCK, mK, err := ratchetNext(rCK, timestamp)
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-
-		plainText, err := decryptGCM(mK, cipherText)
-		if err != nil {
-			result.Err = err.Error()
-			res, _ := json.Marshal(result)
-			return string(res)
-		}
-	
-		result.PlainText, result.RCK, result.MK = plainText, rCK, mK
-	}
-	else {
+	if len(args) != 3 {
 		result.Err = "Invalid number of args"
 		res, _ := json.Marshal(result)
+		return string(res)
 	}
+
+	rCK, err := hex.DecodeString(args[0].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+	cipherText, err := hex.DecodeString(args[1].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	timestamp := []byte(args[2].String())
+
+	rCK, mK, err := ratchetNext(rCK, timestamp)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	plainText, err := decryptGCM(mK, cipherText)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	result.PlainText, result.RCK, result.MK = plainText, rCK, mK
 
 	res, _ := json.Marshal(result)
 	return string(res)
