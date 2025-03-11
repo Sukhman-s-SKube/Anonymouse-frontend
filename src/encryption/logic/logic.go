@@ -130,6 +130,109 @@ func X3DHSender(this js.Value, args []js.Value) interface{} {
 	return string(res)
 }
 
+// Paramters (4): other_pub_DiffieHellmanKey string, rootKey string, plainText string, timestamp string
+func SenderFirst(this js.Value, args []js.Value) interface{} {
+	var result model.SendFirstPack
+
+	if len(args) != 4 {
+		result.Err = "Invalid number of args"
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	dhKB, err := hex.DecodeString(args[0].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	rK, err := hex.DecodeString(args[1].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	plainText := []byte(args[2].String())
+	timestamp := []byte(args[3].String())
+
+	dhSK, dhKA, err := ecdhSend(dhKB)
+
+	rK, sCK, err := ratchetNext(append(rK, dhSK...), timestamp)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	sCK, mK, err := ratchetNext(sCK, timestamp)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	cipherText, err := encryptGCM(mK, plainText)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	rKStr := hex.EncodeToString(rK)
+	sCKStr := hex.EncodeToString(sCK)
+	mKStr := hex.EncodeToString(mK)
+
+	result.CipherText, result.RK, result.SCK, result.MK, result.DHK = cipherText, rKStr, sCKStr, mKStr, dhKA
+
+	res, _ := json.Marshal(result)
+	return string(res)
+}
+
+// Paramters (3): sendingChainKey string, plainText string, timestamp string
+func Sender(this js.Value, args []js.Value) interface{} {
+	var result model.SendPack
+
+	if len(args) != 3 {
+		result.Err = "Invalid number of args"
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	sCK, err := hex.DecodeString(args[0].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	plainText := []byte(args[1].String())
+	timestamp := []byte(args[2].String())
+
+	sCK, mK, err := ratchetNext(sCK, timestamp)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	cipherText, err := encryptGCM(mK, plainText)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	sCKStr := hex.EncodeToString(sCK)
+	mKStr := hex.EncodeToString(mK)
+
+	result.CipherText, result.SCK, result.MK = cipherText, sCKStr, mKStr
+
+	res, _ := json.Marshal(result)
+	return string(res)
+}
+
 // Paramters (9): other_pub_IdentityKey string, other_pub_SchnorrKey string, other_SchnorrSignature string,
 //	other_pub_EphamiralKey string, my_priv_IdentityKey string, my_priv_SchnorrKey string,
 //	my_priv_OnetimePreKey string, cipherText string, timestamp string
@@ -241,112 +344,8 @@ func X3DHReceiver(this js.Value, args []js.Value) interface{} {
 
 	rKStr := hex.EncodeToString(rK)
 	rCKStr := hex.EncodeToString(rCK)
-	mKStr := hex.EncodeToString(mK)
 
-	result.PlainText, result.RK, result.RCK, result.MK = plainText, rKStr, rCKStr, mKStr
-
-	res, _ := json.Marshal(result)
-	return string(res)
-}
-
-// Paramters (4): other_pub_DiffieHellmanKey string, rootKey string, plainText string, timestamp string
-func SenderFirst(this js.Value, args []js.Value) interface{} {
-	var result model.SendFirstPack
-
-	if len(args) != 4 {
-		result.Err = "Invalid number of args"
-		res, _ := json.Marshal(result)
-		return string(res)
-	}
-
-	dhKB, err := hex.DecodeString(args[0].String())
-	if err != nil {
-		result.Err = err.Error()
-		res, _ := json.Marshal(result)
-		return string(res)
-	}
-
-	rK, err := hex.DecodeString(args[1].String())
-	if err != nil {
-		result.Err = err.Error()
-		res, _ := json.Marshal(result)
-		return string(res)
-	}
-
-	plainText := []byte(args[2].String())
-	timestamp := []byte(args[3].String())
-
-	dhSK, dhKA, err := ecdhSend(dhKB)
-
-	rK, sCK, err := ratchetNext(append(rK, dhSK...), timestamp)
-	if err != nil {
-		result.Err = err.Error()
-		res, _ := json.Marshal(result)
-		return string(res)
-	}
-
-	sCK, mK, err := ratchetNext(sCK, timestamp)
-	if err != nil {
-		result.Err = err.Error()
-		res, _ := json.Marshal(result)
-		return string(res)
-	}
-
-	cipherText, err := encryptGCM(mK, plainText)
-	if err != nil {
-		result.Err = err.Error()
-		res, _ := json.Marshal(result)
-		return string(res)
-	}
-
-	rKStr := hex.EncodeToString(rK)
-	sCKStr := hex.EncodeToString(sCK)
-	mKStr := hex.EncodeToString(mK)
-
-	result.CipherText, result.RK, result.SCK, result.MK, result.DHK = cipherText, rKStr, sCKStr, mKStr, dhKA
-
-	res, _ := json.Marshal(result)
-	return string(res)
-}
-
-// Paramters (3): sendingChainKey string, plainText string, timestamp string
-func Sender(this js.Value, args []js.Value) interface{} {
-	var result model.SendPack
-
-	if len(args) != 3 {
-		result.Err = "Invalid number of args"
-		res, _ := json.Marshal(result)
-		return string(res)
-	}
-
-	sCK, err := hex.DecodeString(args[0].String())
-	if err != nil {
-		result.Err = err.Error()
-		res, _ := json.Marshal(result)
-		return string(res)
-	}
-
-	plainText := []byte(args[1].String())
-	timestamp := []byte(args[2].String())
-
-	sCK, mK, err := ratchetNext(sCK, timestamp)
-	if err != nil {
-		result.Err = err.Error()
-		res, _ := json.Marshal(result)
-		return string(res)
-	}
-
-	cipherText, err := encryptGCM(mK, plainText)
-	if err != nil {
-		result.Err = err.Error()
-		res, _ := json.Marshal(result)
-		return string(res)
-	}
-
-	sCKStr := hex.EncodeToString(sCK)
-	mKStr := hex.EncodeToString(mK)
-
-	result.CipherText, result.SCK, result.MK = cipherText, sCKStr, mKStr
+	result.PlainText, result.RK, result.RCK = plainText, rKStr, rCKStr
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -419,9 +418,8 @@ func ReceiverFirst(this js.Value, args []js.Value) interface{} {
 
 	rKStr := hex.EncodeToString(rK)
 	rCKStr := hex.EncodeToString(rCK)
-	mKStr := hex.EncodeToString(mK)
 
-	result.PlainText, result.RK, result.RCK, result.MK = plainText, rKStr, rCKStr, mKStr
+	result.PlainText, result.RK, result.RCK = plainText, rKStr, rCKStr
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -467,9 +465,8 @@ func Receiver(this js.Value, args []js.Value) interface{} {
 	}
 
 	rCKStr := hex.EncodeToString(rCK)
-	mKStr := hex.EncodeToString(mK)
 
-	result.PlainText, result.RCK, result.MK = plainText, rCKStr, mKStr
+	result.PlainText, result.RCK = plainText, rCKStr
 
 	res, _ := json.Marshal(result)
 	return string(res)

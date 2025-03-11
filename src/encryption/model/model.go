@@ -27,14 +27,6 @@ type X3DHSendPack struct {
 	DHK Key `json:"dhK"`
 }
 
-type X3DHRecPack struct {
-	Err string  `json:"err"`
-	PlainText string  `json:"plainText"`
-	RK string `json:"rK"`
-	RCK string `json:"rCK"`
-	MK string `json:"mK"`
-}
-
 type SendFirstPack struct {
 	Err string  `json:"err"`
 	CipherText string  `json:"cipherText"`
@@ -51,19 +43,24 @@ type SendPack struct {
 	MK string `json:"mK"`
 }
 
+type X3DHRecPack struct {
+	Err string  `json:"err"`
+	PlainText string  `json:"plainText"`
+	RK string `json:"rK"`
+	RCK string `json:"rCK"`
+}
+
 type RecFirstPack struct {
 	Err string  `json:"err"`
 	PlainText string  `json:"plainText"`
 	RK string `json:"rK"`
 	RCK string `json:"rCK"`
-	MK string `json:"mK"`
 }
 
 type RecPack struct {
 	Err string  `json:"err"`
 	PlainText string  `json:"plainText"`
 	RCK string `json:"rCK"`
-	MK string `json:"mK"`
 }
 
 type DecMSG struct {
