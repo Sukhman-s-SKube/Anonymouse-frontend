@@ -9,8 +9,7 @@ import (
 	"syscall/js"
 )
 
-
-func GenOnRegister() interface{}{
+func GenOnRegister(this js.Value, args []js.Value) interface{} {
 	var result model.RegPack
 	var err error
 
@@ -25,8 +24,9 @@ func GenOnRegister() interface{}{
 	return string(res)
 }
 
-// Paramters (7): other_pub_IdentityKey string, other_pub_SchnorrKey string, other_SchnorrSignature string, 
-//				  other_pub_OnetimePreKey string, my_priv_identityKey string, plainText string, timestamp string 
+// Paramters (7): other_pub_IdentityKey string, other_pub_SchnorrKey string, other_SchnorrSignature string,
+//
+//	other_pub_OnetimePreKey string, my_priv_identityKey string, plainText string, timestamp string
 func X3DHSender(this js.Value, args []js.Value) interface{} {
 	var result model.X3DHSendPack
 
@@ -79,7 +79,7 @@ func X3DHSender(this js.Value, args []js.Value) interface{} {
 		result.Err = err.Error()
 		res, _ := json.Marshal(result)
 		return string(res)
-	} else if !valid{
+	} else if !valid {
 		result.Err = "Signature Is Not Valid"
 		res, _ := json.Marshal(result)
 		return string(res)
@@ -105,14 +105,14 @@ func X3DHSender(this js.Value, args []js.Value) interface{} {
 		res, _ := json.Marshal(result)
 		return string(res)
 	}
-	
+
 	cipherText, err := encryptGCM(mK, plainText)
 	if err != nil {
 		result.Err = err.Error()
 		res, _ := json.Marshal(result)
 		return string(res)
 	}
-	
+
 	dhK, err := generateKeyPair()
 	if err != nil {
 		result.Err = err.Error()
@@ -120,15 +120,16 @@ func X3DHSender(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.CipherText, result.EK, result.RK, result.SCK, result.MK, result.DHK = cipherText, eK, rK, sCK, mK, dhK
+	result.CipherText, result.EK, result.RK, result.SCK, result.MK, result.DHK = cipherText, eK, string(rK), string(sCK), string(mK), dhK
 
 	res, _ := json.Marshal(result)
 	return string(res)
 }
 
 // Paramters (9): other_pub_IdentityKey string, other_pub_SchnorrKey string, other_SchnorrSignature string,
-//				  other_pub_EphamiralKey string, my_priv_IdentityKey string, my_priv_SchnorrKey string,
-//				  my_priv_OnetimePreKey string, cipherText string, timestamp string
+//
+//	other_pub_EphamiralKey string, my_priv_IdentityKey string, my_priv_SchnorrKey string,
+//	my_priv_OnetimePreKey string, cipherText string, timestamp string
 func X3DHReceiver(this js.Value, args []js.Value) interface{} {
 	var result model.X3DHRecPack
 
@@ -201,7 +202,7 @@ func X3DHReceiver(this js.Value, args []js.Value) interface{} {
 		result.Err = err.Error()
 		res, _ := json.Marshal(result)
 		return string(res)
-	} else if !valid{
+	} else if !valid {
 		result.Err = "Signature Is Not Valid"
 		res, _ := json.Marshal(result)
 		return string(res)
@@ -227,7 +228,7 @@ func X3DHReceiver(this js.Value, args []js.Value) interface{} {
 		res, _ := json.Marshal(result)
 		return string(res)
 	}
-	
+
 	plainText, err := decryptGCM(mK, cipherText)
 	if err != nil {
 		result.Err = err.Error()
@@ -235,7 +236,7 @@ func X3DHReceiver(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.PlainText, result.RK, result.RCK, result.MK = plainText, rK, rCK, mK
+	result.PlainText, result.RK, result.RCK, result.MK = plainText, string(rK), string(rCK), string(mK)
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -290,8 +291,8 @@ func SenderFirst(this js.Value, args []js.Value) interface{} {
 		res, _ := json.Marshal(result)
 		return string(res)
 	}
-	
-	result.CipherText, result.RK, result.SCK, result.MK, result.DHK = cipherText, rK, sCK, mK, dhKA
+
+	result.CipherText, result.RK, result.SCK, result.MK, result.DHK = cipherText, string(rK), string(sCK), string(mK), dhKA
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -331,8 +332,8 @@ func Sender(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.CipherText, result.SCK, result.MK = cipherText, sCK, mK
-	
+	result.CipherText, result.SCK, result.MK = cipherText, string(sCK), string(mK)
+
 	res, _ := json.Marshal(result)
 	return string(res)
 }
@@ -402,7 +403,7 @@ func ReceiverFirst(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.PlainText, result.RK, result.RCK, result.MK = plainText, rK, rCK, mK
+	result.PlainText, result.RK, result.RCK, result.MK = plainText, string(rK), string(rCK), string(mK)
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -447,7 +448,7 @@ func Receiver(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.PlainText, result.RCK, result.MK = plainText, rCK, mK
+	result.PlainText, result.RCK, result.MK = plainText, string(rCK), string(mK)
 
 	res, _ := json.Marshal(result)
 	return string(res)
