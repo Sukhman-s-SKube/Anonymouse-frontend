@@ -20,7 +20,7 @@ export const formSchema = z.object({
 const Spinner = () => (
   <div className="flex items-center justify-center py-4">
     <svg
-      className="animate-spin h-6 w-6 text-white"
+      className="animate-spin h-6 w-6 text-gray-800 dark:text-white"
       xmlns="http://www.w3.org/2000/svg"
       fill="none" viewBox="0 0 24 24"
     >
