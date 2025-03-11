@@ -243,7 +243,7 @@ func X3DHReceiver(this js.Value, args []js.Value) interface{} {
 
 // Paramters (4): other_pub_DiffieHellmanKey string, rootKey string, plainText string, timestamp string
 func SenderFirst(this js.Value, args []js.Value) interface{} {
-	var result model.SendPack
+	var result model.SendFirstPack
 
 	if len(args) != 4 {
 		result.Err = "Invalid number of args"
@@ -331,7 +331,7 @@ func Sender(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.CipherText, result.SCK, result.MK, = cipherText, sCK, mK
+	result.CipherText, result.SCK, result.MK = cipherText, sCK, mK
 	
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -339,7 +339,7 @@ func Sender(this js.Value, args []js.Value) interface{} {
 
 // Paramters (5): other_pub_DiffieHellmanKey string, my_priv_DiffieHellmanKey string, rootKey string, cipherText string, timestamp string
 func ReceiverFirst(this js.Value, args []js.Value) interface{} {
-	var result model.RecPack
+	var result model.RecFirstPack
 
 	if len(args) != 5 {
 		result.Err = "Invalid number of args"
