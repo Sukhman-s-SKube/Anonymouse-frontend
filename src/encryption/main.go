@@ -21,5 +21,7 @@ func main() {
 	js.Global().Set("receiverFirst", js.FuncOf(logic.ReceiverFirst))
 	js.Global().Set("receiver", js.FuncOf(logic.Receiver))
 
+	js.Global().Set("mKDecrypt", js.FuncOf(logic.MKDecrypt))
+
 	<-done
 }

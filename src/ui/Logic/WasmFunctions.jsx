@@ -81,3 +81,11 @@ export const receiver = async (rCK, cipherText, timestamp) => {
         resolve(res);
     });
 };
+
+// Paramters (2): messageKey string, cipherText string
+export const mKDecrypt = async (mK, cipherText) => {
+    return new Promise((resolve) => {
+        const res = window.mKDecrypt(mK, cipherText);
+        resolve(res);
+    });
+};

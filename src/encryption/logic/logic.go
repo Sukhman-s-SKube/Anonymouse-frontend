@@ -475,6 +475,42 @@ func Receiver(this js.Value, args []js.Value) interface{} {
 	return string(res)
 }
 
+// Paramters (2): messageKey string, cipherText string
+func MKDecrypt(this js.Value, args []js.Value) interface{} {
+	var result model.DecMSG
+
+	if len(args) != 2 {
+		result.Err = "Invalid number of args"
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	mK, err := hex.DecodeString(args[0].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+	cipherText, err := hex.DecodeString(args[1].String())
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+
+	plainText, err := decryptGCM(mK, cipherText)
+	if err != nil {
+		result.Err = err.Error()
+		res, _ := json.Marshal(result)
+		return string(res)
+	}
+	
+	result.PlainText = plainText
+
+	res, _ := json.Marshal(result)
+	return string(res)
+}
+
 // Paramters (3): otherPubDH string, msg string, timestamp string
 func EncryptMsg(this js.Value, args []js.Value) interface{} {
 	result := make(map[string]interface{})

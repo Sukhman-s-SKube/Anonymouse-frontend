@@ -65,3 +65,8 @@ type RecPack struct {
 	RCK string `json:"rCK"`
 	MK string `json:"mK"`
 }
+
+type DecMSG struct {
+	Err string  `json:"err"`
+	PlainText string  `json:"plainText"`
+}
