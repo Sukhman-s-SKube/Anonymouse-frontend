@@ -115,53 +115,53 @@ func schnorrVerify(IK, ScK, sig []byte) (bool, error) {
 	return sharedFin.Equal(sigGFin) && sigGFin.Equal(sharedFin), nil
 }
 
-func x3dhSender(IKeyB, SKeyB, OPKeyB, ikeyA, timestamp []byte) ([]byte, model.Key, error) {
+func x3dhSender(IKeyB, SKeyB, OPKeyB, ikeyA, timestamp []byte) ([]byte, []byte, error) {
 	crv := ecdh.P521()
 
 	ikA, err := crv.NewPrivateKey(ikeyA)
 	if err != nil {
-		return nil, model.Key{}, err
+		return nil, nil, err
 	}
 	IKB, err := crv.NewPublicKey(IKeyB)
 	if err != nil {
-		return nil, model.Key{}, err
+		return nil, nil, err
 	}
 	SKB, err := crv.NewPublicKey(SKeyB)
 	if err != nil {
-		return nil, model.Key{}, err
+		return nil, nil, err
 	}
 	OPKB, err := crv.NewPublicKey(OPKeyB)
 	if err != nil {
-		return nil, model.Key{}, err
+		return nil, nil, err
 	}
 	ekA, err := crv.GenerateKey(rand.Reader)
 	if err != nil {
-		return nil, model.Key{}, err
+		return nil, nil, err
 	}
 
 	xdh1, err := ikA.ECDH(SKB)
 	if err != nil {
-		return nil, model.Key{}, err
+		return nil, nil, err
 	}
 	xdh2, err := ekA.ECDH(IKB)
 	if err != nil {
-		return nil, model.Key{}, err
+		return nil, nil, err
 	}
 	xdh3, err := ekA.ECDH(SKB)
 	if err != nil {
-		return nil, model.Key{}, err
+		return nil, nil, err
 	}
 	xdh4, err := ekA.ECDH(OPKB)
 	if err != nil {
-		return nil, model.Key{}, err
+		return nil, nil, err
 	}
 
 	shared, err := hkdfOutput(keySize, sha256.New, append(append(append(xdh1, xdh2...), xdh3...), xdh4...), timestamp, nil)
 	if err != nil {
-		return nil, model.Key{}, err
+		return nil, nil, err
 	}
 
-	return shared, keyMarshler(ekA), nil
+	return shared, ekA.PublicKey().Bytes(), nil
 }
 
 func x3dhReceiver(IKeyB, EKeyB, ikeyA, skeyA, opkeyA, timestamp []byte) ([]byte, error) {

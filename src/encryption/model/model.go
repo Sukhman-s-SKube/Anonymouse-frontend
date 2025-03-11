@@ -20,7 +20,7 @@ type RegPack struct {
 type X3DHSendPack struct {
 	Err string  `json:"err"`
 	CipherText string  `json:"cipherText"`
-	EK Key `json:"eK"`
+	EK string `json:"eK"`
 	RK string `json:"rK"`
 	SCK string `json:"sCK"`
 	MK string `json:"mK"`
