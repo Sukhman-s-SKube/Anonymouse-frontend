@@ -7,3 +7,12 @@
     height: 100%;
     background-color: #f9f9f9;
 }
+
+.chatroom {
+    background-color: #f9f9f9;
+  }
+  
+  .dark .chatroom {
+    background-color: #262626;
+    color: #f0f0f0;
+  }

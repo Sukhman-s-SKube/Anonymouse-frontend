@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
+import { LoadingOverlay, Spinner } from './Login.styles'; 
 
 import './Login.css'
 
@@ -35,6 +36,7 @@ const parseJwt = (token) => {
 
 export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
     const [isLoginToggled, setIsLoginToggled] = useState(true);
+    const [isLoading, setIsLoading] = useState(false); 
     const usernameRef = useRef(null);
     const navigate = useNavigate(); 
 
@@ -55,6 +57,7 @@ export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
     });
 
     const loginRequest = async (values) => {
+        setIsLoading(true);
         let response;
         try {
             response = await axios.post(`${apiroot}/user/login`, {...values});
@@ -62,7 +65,9 @@ export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
             console.log(err);
             setLoggedIn(false);
             usernameRef.current.focus();
-            return toast.error("Login: Failed to login. Check console for error");
+            toast.error("Login: Failed to login. Check console for error");
+            setIsLoading(false);
+            return;
         }
 
         sessionStorage.setItem("JWT", response.data.token);
@@ -70,63 +75,76 @@ export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
         setUserId(decodedToken.user_id);
         setUsername(values.username);
         setLoggedIn(true);
+        setIsLoading(false);
         navigate('/home');
     };
 
     const registerRequest = async (values) => {
+        setIsLoading(true);
         let response;
         try {
             response = await axios.post(`${apiroot}/user`, {...values});
+            await window.electron.createDB();
+            await loginRequest(values);
 
         } catch(err) {
             console.log(err);
             setLoggedIn(false);
             usernameRef.current.focus();
-            return toast.error("Register: Failed to register. Check console for error");
+            toast.error("Register: Failed to register. Check console for error");
+            setIsLoading(false);
+            return;
+        } finally {
+            setIsLoading(false);
         }
-        await window.electron.createDB();
-        await loginRequest(values);
     };
 
     return(
-        <div className="login-container">
-            <h2 className="text-center text-2xl font-bold">{isLoginToggled ? 'Login' : "Register"}</h2>
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(isLoginToggled ? loginRequest : registerRequest)} className="space-y-8">
-                    <FormField
-                        control={form.control}
-                        name="username"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Username</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Username" {...field} ref={usernameRef}/>
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Password</FormLabel>
-                                <FormControl>
-                                    <Input type="password" placeholder="Password" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <Button className="w-full text-base" type="submit">{isLoginToggled ? 'Login' : "Register"}</Button>
-                </form>
-            </Form>
-            <ToggleContainer>
-                <ToggleBtnBg $isLoginToggled={isLoginToggled}/>
-                <ToggleBtn $isLoginToggled={isLoginToggled} onClick={() => setIsLoginToggled(true)}>Have an account?<br />Log in here</ToggleBtn>
-                <ToggleBtn $isLoginToggled={!isLoginToggled} onClick={() => setIsLoginToggled(false)}>New?<br />Register Here</ToggleBtn>
-            </ToggleContainer>
-        </div>
+        <>
+            {isLoading && (
+                <LoadingOverlay>
+                    <Spinner />
+                </LoadingOverlay>
+            )}
+            <div className="login-container">
+                <h2 className="text-center text-2xl font-bold">{isLoginToggled ? 'Login' : "Register"}</h2>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(isLoginToggled ? loginRequest : registerRequest)} className="space-y-8">
+                        <FormField
+                            control={form.control}
+                            name="username"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Username</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Username" {...field} ref={usernameRef}/>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="password"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Password</FormLabel>
+                                    <FormControl>
+                                        <Input type="password" placeholder="Password" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <Button className="w-full text-base" type="submit">{isLoginToggled ? 'Login' : "Register"}</Button>
+                    </form>
+                </Form>
+                <ToggleContainer>
+                    <ToggleBtnBg $isLoginToggled={isLoginToggled}/>
+                    <ToggleBtn $isLoginToggled={isLoginToggled} onClick={() => setIsLoginToggled(true)}>Have an account?<br />Log in here</ToggleBtn>
+                    <ToggleBtn $isLoginToggled={!isLoginToggled} onClick={() => setIsLoginToggled(false)}>New?<br />Register Here</ToggleBtn>
+                </ToggleContainer>
+            </div>
+        </>
     );
 };

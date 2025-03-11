@@ -4,9 +4,11 @@ import { BrowserRouter, Routes, Route, HashRouter } from 'react-router';
 
 import { Login } from './Components/User/Login';
 import { HomePage } from '@/Pages/HomePage';
+import { lightTheme, darkTheme } from './Components/ui/themes';
 
 import './App.css';
 import './wasm_exec.js';
+
 
 const apiroot = 'https://se4450.duckdns.org/api';
 
@@ -16,6 +18,7 @@ const App = () => {
   const [loggedIn, setLoggedIn] = useState(false);
   const [userId, setUserId] = useState("");
   const [username, setUsername] = useState("");
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     async function loadWasm() {
