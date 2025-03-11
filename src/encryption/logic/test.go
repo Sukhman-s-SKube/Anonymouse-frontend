@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"encoding/base64"
-	"encoding/hex"
 	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/sha256"
@@ -48,10 +46,10 @@ func main() {
 //working off of the SK from X3DH
 //alice send
 	alice_ciphertext1 := alice.sending("hello")
-	alice.AD = nil
+	// alice.AD = nil
 	//bob receive
 	bob_plaintext1 := bob.recving(alice_ciphertext1)
-	bob.AD = nil
+	// bob.AD = nil
 
 //real dh ratchet tick
 //bob send
@@ -158,8 +156,8 @@ type Person struct{
 	name string
 
 	IK, EK, OPK *ecdh.PrivateKey
-	Xdh1, Xdh2, Xdh3, Xdh4 []byte
-	SK, AD []byte
+	Xdh1, Xdh2, Xdh3, Xdh4, SK []byte
+	// AD []byte
 
 	ScK *ecdh.PrivateKey
 	SchnorrSig []byte
@@ -206,7 +204,7 @@ func (person *Person) X3DH_send(otherPerson Person){
 	person.Xdh3, _ = person.EK.ECDH(otherPerson.ScK.PublicKey())
 	person.Xdh4, _ = person.EK.ECDH(otherPerson.OPK.PublicKey())
 	person.SK = hkdf_output(keySize, sha256.New, append(append(append(person.Xdh1, person.Xdh2...), person.Xdh3...), person.Xdh4...), nil, nil)
-	person.AD = append(person.IK.PublicKey().Bytes(), otherPerson.IK.PublicKey().Bytes()...)
+	// person.AD = append(person.IK.PublicKey().Bytes(), otherPerson.IK.PublicKey().Bytes()...)
 }
 
 func (person *Person) X3DH_recv(otherPerson Person){
@@ -218,7 +216,7 @@ func (person *Person) X3DH_recv(otherPerson Person){
 	person.Xdh3, _ = person.ScK.ECDH(otherPerson.EK.PublicKey())
 	person.Xdh4, _ = person.OPK.ECDH(otherPerson.EK.PublicKey())
 	person.SK = hkdf_output(keySize, sha256.New, append(append(append(person.Xdh1, person.Xdh2...), person.Xdh3...), person.Xdh4...), nil, nil)
-	person.AD = append(otherPerson.IK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...)
+	// person.AD = append(otherPerson.IK.PublicKey().Bytes(), person.IK.PublicKey().Bytes()...)
 }
 
 func schnorr_verify(IK, ScK, sig []byte) bool{
@@ -250,12 +248,12 @@ func schnorr_verify(IK, ScK, sig []byte) bool{
 
 
 func (person *Person) root_ratchet_send(){
-	person.root.root_ratchet_next(person.root.state)
+	person.root.ratchet_next(person.root.state)
 	person.send.state = person.root.next
 }
 
 func (person *Person) root_ratchet_recv(){
-	person.root.root_ratchet_next(person.root.state)
+	person.root.ratchet_next(person.root.state)
 	person.recv.state = person.root.next
 }
 
@@ -263,55 +261,47 @@ func (person *Person) dh_ratchet_send(){
 	curve := ecdh.P521()
 	person.myDH, _ = curve.GenerateKey(rand.Reader)
 	dhs, _ := person.myDH.ECDH(person.otherDH)
-	person.root.root_ratchet_next(append(person.root.state, dhs...))
+	person.root.ratchet_next(append(person.root.state, dhs...))
 	person.send.state = person.root.next
 }
 
 func (person *Person) dh_ratchet_recv(dhKey *ecdh.PublicKey){
 	person.otherDH = dhKey
 	dhs, _ := person.myDH.ECDH(person.otherDH)
-	person.root.root_ratchet_next(append(person.root.state, dhs...))
+	person.root.ratchet_next(append(person.root.state, dhs...))
 	person.recv.state = person.root.next
 }
 
-func (ratchet *Ratchet) root_ratchet_next(secret []byte) {
-	output := hkdf_output(keySize*2, sha256.New, secret, nil, nil)
-	ratchet.state = output[:keySize]
-	ratchet.next = output[keySize:]
-}
-
 func (person *Person) sending(msg string) []byte {
-	person.send.chain_ratchet_next(person.send.state)
-	return encryptGCM(person.send.next, []byte(msg), person.AD)
+	person.send.ratchet_next(person.send.state)
+	return encryptGCM(person.send.next, []byte(msg))
 }
 
 func (person *Person) recving(cipherText []byte) string {
-	person.recv.chain_ratchet_next(person.recv.state)
-	return decryptGCM(person.recv.next, cipherText, person.AD)
+	person.recv.ratchet_next(person.recv.state)
+	return decryptGCM(person.recv.next, cipherText)
 
 }
 
-func (ratchet *Ratchet) chain_ratchet_next(secret []byte) {
+func (ratchet *Ratchet) ratchet_next(secret []byte) {
 	output := hkdf_output(keySize*2, sha256.New, secret, nil, nil)
 	ratchet.state = output[:keySize]
 	ratchet.next = output[keySize:]
 }
 
-func hkdf_output (outputSize int, hash func() hash.Hash, secret, salt, info []byte) []byte{
+func hkdf_output(outputSize int, hash func() hash.Hash, secret, salt, info []byte) []byte{
 	hkdf_step := hkdf.New(hash, secret, salt, info)
 
-	var keys []byte
 	key := make([]byte, outputSize)
 	if _, err := io.ReadFull(hkdf_step, key); err != nil {
 		panic(err)
 	}
 
-	keys = key
-	return keys
+	return key
 }
 
 
-func encryptGCM(key, msg, AD []byte) []byte {
+func encryptGCM(key, msg []byte) []byte {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil
@@ -327,12 +317,12 @@ func encryptGCM(key, msg, AD []byte) []byte {
 		return nil
 	}
 
-	cipherBytes := gcm.Seal(nonce, nonce, msg, AD)
+	cipherBytes := gcm.Seal(nonce, nonce, msg, nil)
 
 	return cipherBytes
 }
 
-func decryptGCM(key, cipherBytes, AD []byte) string {
+func decryptGCM(key, cipherBytes []byte) string {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -350,7 +340,7 @@ func decryptGCM(key, cipherBytes, AD []byte) string {
 	nonce := cipherBytes[:gcm.NonceSize()]
 	cipherBytes = cipherBytes[gcm.NonceSize():]
 
-	plainBytes, err := gcm.Open(nil, nonce, cipherBytes, AD)
+	plainBytes, err := gcm.Open(nil, nonce, cipherBytes, nil)
 	if err != nil {
 		return "err"
 	}
