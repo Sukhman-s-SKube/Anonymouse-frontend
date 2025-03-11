@@ -120,7 +120,7 @@ func X3DHSender(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.CipherText, result.EK, result.RK, result.SCK, result.MK, result.DHK = cipherText, eK, string(rK), string(sCK), string(mK), dhK
+	result.CipherText, result.EK, result.RK, result.SCK, result.MK, result.DHK = cipherText, eK, hex.EncodeToString(rK), hex.EncodeToString(sCK), hex.EncodeToString(mK), dhK
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -236,7 +236,7 @@ func X3DHReceiver(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.PlainText, result.RK, result.RCK, result.MK = plainText, string(rK), string(rCK), string(mK)
+	result.PlainText, result.RK, result.RCK, result.MK = plainText, hex.EncodeToString(rK), hex.EncodeToString(rCK), hex.EncodeToString(mK)
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -292,7 +292,7 @@ func SenderFirst(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.CipherText, result.RK, result.SCK, result.MK, result.DHK = cipherText, string(rK), string(sCK), string(mK), dhKA
+	result.CipherText, result.RK, result.SCK, result.MK, result.DHK = cipherText, hex.EncodeToString(rK), hex.EncodeToString(sCK), hex.EncodeToString(mK), dhKA
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -332,7 +332,7 @@ func Sender(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.CipherText, result.SCK, result.MK = cipherText, string(sCK), string(mK)
+	result.CipherText, result.SCK, result.MK = cipherText, hex.EncodeToString(sCK), hex.EncodeToString(mK)
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -403,7 +403,7 @@ func ReceiverFirst(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.PlainText, result.RK, result.RCK, result.MK = plainText, string(rK), string(rCK), string(mK)
+	result.PlainText, result.RK, result.RCK, result.MK = plainText, hex.EncodeToString(rK), hex.EncodeToString(rCK), hex.EncodeToString(mK)
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -448,7 +448,7 @@ func Receiver(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.PlainText, result.RCK, result.MK = plainText, string(rCK), string(mK)
+	result.PlainText, result.RCK, result.MK = plainText, hex.EncodeToString(rCK), hex.EncodeToString(mK)
 
 	res, _ := json.Marshal(result)
 	return string(res)
