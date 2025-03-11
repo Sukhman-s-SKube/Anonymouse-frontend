@@ -25,7 +25,6 @@ func GenOnRegister(this js.Value, args []js.Value) interface{} {
 }
 
 // Paramters (7): other_pub_IdentityKey string, other_pub_SchnorrKey string, other_SchnorrSignature string,
-//
 //	other_pub_OnetimePreKey string, my_priv_identityKey string, plainText string, timestamp string
 func X3DHSender(this js.Value, args []js.Value) interface{} {
 	var result model.X3DHSendPack
@@ -131,7 +130,6 @@ func X3DHSender(this js.Value, args []js.Value) interface{} {
 }
 
 // Paramters (9): other_pub_IdentityKey string, other_pub_SchnorrKey string, other_SchnorrSignature string,
-//
 //	other_pub_EphamiralKey string, my_priv_IdentityKey string, my_priv_SchnorrKey string,
 //	my_priv_OnetimePreKey string, cipherText string, timestamp string
 func X3DHReceiver(this js.Value, args []js.Value) interface{} {
@@ -240,7 +238,11 @@ func X3DHReceiver(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.PlainText, result.RK, result.RCK, result.MK = plainText, hex.EncodeToString(rK), hex.EncodeToString(rCK), hex.EncodeToString(mK)
+	rKStr := hex.EncodeToString(rK)
+	rCKStr := hex.EncodeToString(rCK)
+	mKStr := hex.EncodeToString(mK)
+
+	result.PlainText, result.RK, result.RCK, result.MK = plainText, rKStr, rCKStr, mKStr
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -296,7 +298,11 @@ func SenderFirst(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.CipherText, result.RK, result.SCK, result.MK, result.DHK = cipherText, hex.EncodeToString(rK), hex.EncodeToString(sCK), hex.EncodeToString(mK), dhKA
+	rKStr := hex.EncodeToString(rK)
+	sCKStr := hex.EncodeToString(sCK)
+	mKStr := hex.EncodeToString(mK)
+
+	result.CipherText, result.RK, result.SCK, result.MK, result.DHK = cipherText, rKStr, sCKStr, mKStr, dhKA
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -336,7 +342,10 @@ func Sender(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.CipherText, result.SCK, result.MK = cipherText, hex.EncodeToString(sCK), hex.EncodeToString(mK)
+	sCKStr := hex.EncodeToString(sCK)
+	mKStr := hex.EncodeToString(mK)
+
+	result.CipherText, result.SCK, result.MK = cipherText, sCKStr, mKStr
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -407,7 +416,11 @@ func ReceiverFirst(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.PlainText, result.RK, result.RCK, result.MK = plainText, hex.EncodeToString(rK), hex.EncodeToString(rCK), hex.EncodeToString(mK)
+	rKStr := hex.EncodeToString(rK)
+	rCKStr := hex.EncodeToString(rCK)
+	mKStr := hex.EncodeToString(mK)
+
+	result.PlainText, result.RK, result.RCK, result.MK = plainText, rKStr, rCKStr, mKStr
 
 	res, _ := json.Marshal(result)
 	return string(res)
@@ -452,7 +465,10 @@ func Receiver(this js.Value, args []js.Value) interface{} {
 		return string(res)
 	}
 
-	result.PlainText, result.RCK, result.MK = plainText, hex.EncodeToString(rCK), hex.EncodeToString(mK)
+	rCKStr := hex.EncodeToString(rCK)
+	mKStr := hex.EncodeToString(mK)
+
+	result.PlainText, result.RCK, result.MK = plainText, rCKStr, mKStr
 
 	res, _ := json.Marshal(result)
 	return string(res)
