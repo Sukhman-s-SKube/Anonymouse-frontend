@@ -84,7 +84,7 @@ export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
         let response;
         try {
             response = await axios.post(`${apiroot}/user`, {...values});
-            await window.electron.createDB();
+            await window.electron.createDB(response.data._id);
             await loginRequest(values);
 
         } catch(err) {
