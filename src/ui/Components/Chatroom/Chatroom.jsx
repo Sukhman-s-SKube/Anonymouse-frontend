@@ -54,14 +54,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     };
   }, [socket, chatroom]);
 
-  useEffect(() => {
-    if (!apiroot) return;
-    const pendingMessages = messages.filter((msg) => msg.pending === true);
-    pendingMessages.forEach((msg) => {
-      resendPendingMessage(msg);
-    });
-  }, [apiroot]);
-
   const readMsgReq = async (msgIds) => {
     try {
       await axios.put(`${apiroot}/message/read`, { message_ids: msgIds }, {
@@ -138,51 +130,12 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     await window.electron.insertMsg(msg, userId);
   };
 
-  const resendPendingMessage = async (pendingMsg) => {
-    const timestamp = new Date(pendingMsg.timestamp);
-    try {
-      const response = await axios.delete(`${apiroot}/user/dh_keys/${chatMember.current}`, {
-        headers: { Authorization: sessionStorage.getItem("JWT") },
-      });
-      const otherPubDH = response.data.popped_key.pubKey;
-      const otherPubDHId = response.data.popped_key.id;
-      
-      let encData = await encryptMsg(otherPubDH, pendingMsg.content, timestamp.toISOString());
-      if (encData["error"] !== "") {
-        console.log(encData["error"]);
-        return toast.error("Resend Msg: Failed to encrypt message.");
-      }
-      
-      let payload = {
-        content: encData["cipherText"],
-        pubKey: encData["pubKey"],
-        privKeyId: otherPubDHId.toString(),
-        timestamp: timestamp.toISOString(),
-      };
-      const properHash = await window.electron.sha256(
-        payload.content + payload.pubKey + payload.timestamp
-      );
-      
-      outMsgKeys.current = { ...outMsgKeys.current, [properHash]: encData["masterSec"] };
-  
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg._id === pendingMsg._id ? { ...msg, hash: properHash, pending: false } : msg
-        )
-      );
-      
-      socket.emit("chatroomMessage", {
-        chatroomId: chatroom._id,
-        message: payload,
-      });
-    } catch (err) {
-      console.error("Resend failed", err);
-    }
-  };
-
   const addMessage = async (data) => {
-    await window.electron.insertMsg(data, userId);
     let confirmedMsg = await window.electron.getMsg(data._id, userId);
+    if (!confirmedMsg) {
+      await window.electron.insertMsg(data, userId);
+      confirmedMsg = await window.electron.getMsg(data._id, userId);
+    }
     
     if (data.chatroom === chatroom._id) {
       setMessages((prevMsgs) => {
@@ -196,10 +149,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
           newMsgs[pendingIndex] = { ...confirmedMsg, pending: false, provisional: false };
           return newMsgs;
         } else {
-          const exists = prevMsgs.some((msg) => msg._id === confirmedMsg._id);
-          if (exists) {
-            return prevMsgs.map((msg) => (msg._id === confirmedMsg._id ? confirmedMsg : msg));
-          }
           return [...prevMsgs, confirmedMsg];
         }
       });
@@ -235,17 +184,21 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       return;
     }
     else {
-      try {
-        await parseMessage(data);
-      } catch(err) {
-        console.error(err);
-        return toast.error("Getting Msg: Failed to load message.");
+      if (data.chatroom === chatroom._id) {
+        try {
+          await parseMessage(data);
+        } catch(err) {
+          console.error(err);
+          return toast.error("Getting Msg: Failed to load message.");
+        }
       }
-      if (data.chatroom !== chatroom._id) {
+      else {
         setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true }));
         return;
       }
       await addMessage(data);
+      await readMsgReq([data._id]);
+      return
     }
   };
 
