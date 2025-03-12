@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 
 import '@/Components/Chatroom/Chatroom.css';
-import { encryptMsg, decryptMsg, x3DHSender, x3DHReceiver, senderFirst, sender, receiverFirst, receiver } from '@/Logic/WasmFunctions';
+import { x3DHSender, x3DHReceiver, senderFirst, sender, receiverFirst, receiver } from '@/Logic/WasmFunctions';
 
 import { Button } from '@/Components/ui/button';
 import { Form, FormControl, FormField, FormItem } from '@/Components/ui/form';
@@ -17,7 +17,7 @@ export const formSchema = z.object({
   msg: z.string().min(1),
 });
 
-export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newChatMembers, chatrooms = [] }) => {
+export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) => {
   const [messages, setMessages] = useState([]);
   const chatMember = useRef("");
   const outMsgKeys = useRef({});
@@ -223,8 +223,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       toast.error("Error getting messages. Check Console");
       console.log(err);
     }
-
-    // console.log(response);
     
     let msgIds = [];
     if (response.data.length > 0 && !(await window.electron.chatroomExists(chatroom._id, userId))) {
@@ -410,7 +408,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
             ))}
         <div ref={chatBottom} />
       </div>
-      {chatroom == null && newChatMembers?.length == 0 ? '' : 
+      {chatroom == null ? '' : 
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(sendMessage)}
