@@ -1,6 +1,7 @@
 import {useEffect, useState, useRef} from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { Loader2 } from "lucide-react"
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
@@ -141,11 +142,11 @@ export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
 
     return(
         <>
-            {isLoading && (
+            {/* {isLoading && (
                 <LoadingOverlay>
                     <Spinner />
                 </LoadingOverlay>
-            )}
+            )} */}
             <div className="login-container">
                 <h2 className="text-center text-2xl font-bold">{isLoginToggled ? 'Login' : "Register"}</h2>
                 <Form {...form}>
@@ -176,11 +177,18 @@ export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
                                 </FormItem>
                             )}
                         />
-                        <Button className="w-full text-base" type="submit">{isLoginToggled ? 'Login' : "Register"}</Button>
+                        {isLoading ? 
+                            <Button className="w-full text-base" disabled>
+                            <Loader2 className="animate-spin" />
+                                Please wait
+                            </Button> : 
+                            <Button className="w-full text-base" type="submit">{isLoginToggled ? 'Login' : "Register"}</Button>
+                        }
                     </form>
                 </Form>
                 <ToggleContainer>
                     <ToggleBtnBg $isLoginToggled={isLoginToggled}/>
+                    
                     <ToggleBtn $isLoginToggled={isLoginToggled} onClick={() => setIsLoginToggled(true)}>Have an account?<br />Log in here</ToggleBtn>
                     <ToggleBtn $isLoginToggled={!isLoginToggled} onClick={() => setIsLoginToggled(false)}>New?<br />Register Here</ToggleBtn>
                 </ToggleContainer>

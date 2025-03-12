@@ -12,23 +12,12 @@ import { Button } from '@/Components/ui/button';
 import { Form, FormControl, FormField, FormItem } from '@/Components/ui/form';
 import { Input } from '@/Components/ui/input';
 import { Message } from '@/Components/Message/Message';
+import { Spinner } from "@/Components/Spinner/Spinner";
 
 export const formSchema = z.object({
   msg: z.string().min(1),
 });
 
-const Spinner = () => (
-  <div className="flex items-center justify-center py-4">
-    <svg
-      className="animate-spin h-6 w-6 text-gray-800 dark:text-white"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none" viewBox="0 0 24 24"
-    >
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-    </svg>
-  </div>
-);
 
 export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newChatMembers, chatrooms = [] }) => {
   const [messages, setMessages] = useState([]);
@@ -38,7 +27,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
   const msgInputRef = useRef(null);
   const chatBottom = useRef(null);
 
-  const [loadingMessages, setLoadingMessages] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -161,7 +150,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         );
         if (pendingIndex !== -1) {
           const newMsgs = [...prevMsgs];
-          newMsgs[pendingIndex] = { ...confirmedMsg, pending: false, provisional: false };
+          newMsgs[pendingIndex] = { ...confirmedMsg, pending: false };
           return newMsgs;
         } else {
           return [...prevMsgs, confirmedMsg];
@@ -325,15 +314,13 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     
     const pendingMessage = {
       _id: provisionalId,
-      provisionalId: provisionalId,
-      content: values.msg.trim(),
-      sender: userId,
+      content: values.msg,
       pending: true,
-      provisional: true,
+      sender: userId,
       timestamp,
       chatroom: chatroom._id,
     };
-    
+
     setMessages((prevMessages) => [...prevMessages, pendingMessage]);
     form.reset();
     if (msgInputRef.current) msgInputRef.current.focus();
@@ -392,12 +379,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     
     const properHash = await window.electron.sha256(payload.payload.content + payload.payload.timestamp + chatroom._id);
     outMsgKeys.current = { ...outMsgKeys.current, [properHash]: payload.mK };
-
-    setMessages((prevMessages) =>
-      prevMessages.map((msg) =>
-        msg._id === provisionalId ? { ...msg, hash: properHash, pending: false, provisional: false } : msg
-      )
-    );
     
     socket.emit("chatroomMessage", {
       chatroomId: chatroom._id,

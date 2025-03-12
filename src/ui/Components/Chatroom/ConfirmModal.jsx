@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/Components/ui/button';
 
-const ConfirmModal = ({ message, onConfirm, onCancel }) => {
+export const ConfirmModal = ({ message, onConfirm, onCancel }) => {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg max-w-sm mx-auto">
@@ -18,5 +18,3 @@ const ConfirmModal = ({ message, onConfirm, onCancel }) => {
     </div>
   );
 };
-
-export default ConfirmModal;
