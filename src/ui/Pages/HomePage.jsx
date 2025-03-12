@@ -79,9 +79,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       socket.on('connect', async () => {
         await getChatroomsRequest(socket);
       });
-      // socket.on("joinedUserRoom", (data) => {
-      //   console.log("joined user room:", data.roomId);
-      // });
 
       socket.on("newChatroom", (chatroomData) => {
         setChatrooms((prevChatrooms) => [...prevChatrooms, chatroomData]);
@@ -92,12 +89,12 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       socket.on("chatroomDeleted", (data) => {
           console.log("Chatroom deleted:", data);
           setChatrooms((prevChatrooms) =>
-            prevChatrooms.filter((chatroom) => chatroom._id !== data.message)
+            prevChatrooms.filter((chatroom) => chatroom._id !== data.chatroomID)
           );
           setCurrChatroom((prev) =>
-            prev?._id === data.message ? null : prev
+            prev?._id === data.chatroomID ? null : prev
           );
-          toast.info(`Chatroom ${data.message} was deleted.`);
+          toast.info(`Chatroom ${data.chatroomName} was deleted.`);
       });
       
       return () => {
@@ -152,10 +149,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       soc.emit("joinRoom", { chatroomId: room._id });
     });
     setLoadingChatrooms(false);
-  };
-
-  const logout = () => {
-    socket.disconnect();
   };
 
   return (
