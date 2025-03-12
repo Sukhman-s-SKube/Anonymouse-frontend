@@ -29,16 +29,12 @@ const Spinner = () => (
 );
 
 export const Sidebar = ({
-  username,
   chatrooms,
   loadingChatrooms,
-  msgNotifs,
   currChatroom,
   setCurrChatroom,
   setAddNewChat,
-  isNewChatOpen,
   setMsgNotifs,
-  darkMode,
   showContent,
   onDeleteChatroom,
 }) => {

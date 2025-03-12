@@ -4,8 +4,6 @@ import { io } from "socket.io-client";
 import axios from "axios";
 import { toast } from 'sonner';
 
-import { generateDHKeys } from "@/Logic/WasmFunctions";
-
 import { Chatroom } from "@/Components/Chatroom/Chatroom";
 import { Sidebar } from "@/Components/Sidebar/Sidebar";
 import { Button } from "@/Components/ui/button";
@@ -48,7 +46,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       await axios.delete(`${apiroot}/chatroom/${chatroomId}`, {
         headers: { Authorization: sessionStorage.getItem("JWT") },
       });
-      toast.success(`Chatroom ${chatroomId} successfully deleted.`);
       
       if (window.electron && window.electron.deleteMsgs) {
         await window.electron.deleteMsgs(chatroomId);
@@ -80,61 +77,49 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
   useEffect(() => {
     if (socket != null) {
       socket.on('connect', async () => {
-        let numKeys = 100;
-        const genDHKeys = await generateDHKeys(numKeys);
-        const parsedKeys = JSON.parse(genDHKeys);
-        if (parsedKeys.err !== '') {
-          console.log(parsedKeys.err);
-          return toast.error('Gen Keys: Error generating DH Keys. Check console for error');
-        }
-
-        await window.electron.insertDHKeys(parsedKeys.keys);
-        let keys = await window.electron.getKeys(numKeys);
-        
-        await sendDHKeysRequest(keys);
         await getChatroomsRequest(socket);
+      });
 
-        socket.on("joinedUserRoom", (data) => {
-          console.log("joined user room:", data.roomId);
-        });
+      socket.on("newChatroom", (chatroomData) => {
+        setChatrooms((prevChatrooms) => [...prevChatrooms, chatroomData]);
+        socket.emit("joinRoom", { chatroomId: chatroomData._id });
+        toast.info(`New chatroom created with ${chatroomData.name}`);
+      });
 
-        socket.on("newChatroom", (chatroomData) => {
-          setChatrooms((prevChatrooms) => [...prevChatrooms, chatroomData]);
-          socket.emit("joinRoom", { chatroomId: chatroomData._id });
-          toast.info(`New chatroom created with ${chatroomData.name}`);
-        });
-
-        socket.on("chatroomDeleted", (data) => {
-            console.log("Chatroom deleted:", data);
-            setChatrooms((prevChatrooms) =>
-              prevChatrooms.filter((chatroom) => chatroom._id !== data.message)
-            );
-            setCurrChatroom((prev) =>
-              prev?._id === data.message ? null : prev
-            );
-            toast.info(`Chatroom ${data.message} was deleted.`);
-          });
+      socket.on("chatroomDeleted", (data) => {
+          console.log("Chatroom deleted:", data);
+          setChatrooms((prevChatrooms) =>
+            prevChatrooms.filter((chatroom) => chatroom._id !== data.chatroomID)
+          );
+          setCurrChatroom((prev) =>
+            prev?._id === data.chatroomID ? null : prev
+          );
+          toast.info(`Chatroom ${data.chatroomName} was deleted.`);
       });
       
       return () => {
         socket.off("newChatroom");
         socket.off("deletedChatroom");
+        socket.off("chatroomDeleted");
+        socket.off("joinedUserRoom");
       };
-    }else{
+    }
+    else {
       console.log("socket did not connnect")
     }
   }, [socket]);
 
   useEffect(() => {
-    console.log(newChatCreated)
-    if(newChatCreated){
-      setChatrooms((prevChatrooms) => [...prevChatrooms, newChatCreated]);
-      if (socket){
-        socket.emit("joinRoom", { chatroomId: newChatCreated._id });
+    if (newChatCreated) {
+      let found = chatrooms.some((chatroom) => (chatroom._id === newChatCreated._id) )
+      if (!found) {
+        setChatrooms((prevChatrooms) => [...prevChatrooms, newChatCreated]);
+        if (socket){
+          socket.emit("joinRoom", { chatroomId: newChatCreated._id });
+        }
       }
     }
     setNewChatCreated();
-    console.log(chatrooms)
     }, [newChatCreated]);
 
   const openNewChat = () => {
@@ -148,18 +133,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       setShowSidebarContent(true);
     }, 300); 
   };
-
-  const sendDHKeysRequest = async (keys) => {
-    try {
-      await axios.put(`${apiroot}/user/dh_keys`, keys, {
-        headers: { Authorization: sessionStorage.getItem("JWT") },
-      });
-    } catch (err) {
-      console.log(err);
-      return toast.error("Gen Keys: Failed to send keys to server. Check console for error");
-    }
-  };
-
+  
   const getChatroomsRequest = async (soc) => {
     setLoadingChatrooms(true);
     let response;
@@ -178,10 +152,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       soc.emit("joinRoom", { chatroomId: room._id });
     });
     setLoadingChatrooms(false);
-  };
-
-  const logout = () => {
-    socket.disconnect();
   };
 
   return (

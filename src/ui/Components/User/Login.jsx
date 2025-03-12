@@ -6,6 +6,8 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import { LoadingOverlay, Spinner } from './Login.styles'; 
 
+import { genOnRegister, generateDHKeys } from '@/Logic/WasmFunctions';
+
 import './Login.css'
 
 import { Button } from '@/Components/ui/button';
@@ -59,8 +61,25 @@ export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
     const loginRequest = async (values) => {
         setIsLoading(true);
         let response;
+        let decodedToken;
         try {
             response = await axios.post(`${apiroot}/user/login`, {...values});
+            
+            sessionStorage.setItem("JWT", response.data.token);
+            decodedToken = parseJwt(response.data.token);
+            console.log(response);
+            if (response.data.otpKeys < 20) {
+                let dhKeys = await generateDHKeys(100);
+                dhKeys = JSON.parse(dhKeys);
+                if (dhKeys.err != '') {
+                    throw new Error(dhKeys.err)
+                }
+                await window.electron.insertDHKeys(dhKeys.keys, decodedToken.user_id);
+                dhKeys = await window.electron.getKeys(100, decodedToken.user_id)
+                await axios.put(`${apiroot}/user/otpKeys`, dhKeys, {
+                    headers: { Authorization: sessionStorage.getItem("JWT") },
+                });
+            }
         } catch(err) {
             console.log(err);
             setLoggedIn(false);
@@ -70,8 +89,6 @@ export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
             return;
         }
 
-        sessionStorage.setItem("JWT", response.data.token);
-        let decodedToken = parseJwt(response.data.token);
         setUserId(decodedToken.user_id);
         setUsername(values.username);
         setLoggedIn(true);
@@ -83,8 +100,31 @@ export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
         setIsLoading(true);
         let response;
         try {
-            response = await axios.post(`${apiroot}/user`, {...values});
-            await window.electron.createDB();
+            let keyGen = await genOnRegister();
+            keyGen = JSON.parse(keyGen);
+            if (keyGen.err != '') {
+                throw new Error(keyGen.err)
+            }
+            
+            response = await axios.post(`${apiroot}/user`, {
+                username: values.username,
+                password: values.password,
+                identityKey: keyGen.iK.pubKey,
+                schnorrKey: keyGen.sK.pubKey,
+                schnorrSig: keyGen.sig,
+            });
+
+            await window.electron.createDB(response.data._id);
+            let person = {
+                _id: response.data._id,
+                ik: keyGen.iK.privKey,
+                IK: keyGen.iK.pubKey,
+                sk: keyGen.sK.privKey,
+                SK: keyGen.sK.pubKey,
+                sSig: keyGen.sig,
+                name: response.data.username,
+            };
+            await window.electron.initPerson(person, person._id);
             await loginRequest(values);
 
         } catch(err) {
