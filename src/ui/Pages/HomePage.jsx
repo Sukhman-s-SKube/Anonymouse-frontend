@@ -110,10 +110,13 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
   }, [socket]);
 
   useEffect(() => {
-    if(newChatCreated){
-      setChatrooms((prevChatrooms) => [...prevChatrooms, newChatCreated]);
-      if (socket){
-        socket.emit("joinRoom", { chatroomId: newChatCreated._id });
+    if (newChatCreated) {
+      let found = chatrooms.some((chatroom) => (chatroom._id === newChatCreated._id) )
+      if (!found) {
+        setChatrooms((prevChatrooms) => [...prevChatrooms, newChatCreated]);
+        if (socket){
+          socket.emit("joinRoom", { chatroomId: newChatCreated._id });
+        }
       }
     }
     setNewChatCreated();
