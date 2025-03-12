@@ -455,7 +455,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
             </Button>
           </form>
         </Form>
-      )}
+      }
     </div>
   );
 };
