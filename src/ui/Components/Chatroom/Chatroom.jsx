@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 
 import '@/Components/Chatroom/Chatroom.css';
-import { encryptMsg, decryptMsg, x3DHSender } from '@/Logic/WasmFunctions';
+import { encryptMsg, decryptMsg, x3DHSender, x3DHReceiver } from '@/Logic/WasmFunctions';
 
 import { Button } from '@/Components/ui/button';
 import { Form, FormControl, FormField, FormItem } from '@/Components/ui/form';
@@ -19,7 +19,7 @@ export const formSchema = z.object({
 
 export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newChatMembers, chatrooms = [] }) => {
   const [messages, setMessages] = useState([]);
-  const [chatMember, setChatMember] = useState("");
+  const chatMember = useRef("");
   const outMsgKeys = useRef({});
 
   const msgInputRef = useRef(null);
@@ -88,34 +88,70 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     return;
   };
 
+  const initMsgReceive = async (msg) => {
+      let senderInfoRes;
+      try {
+        senderInfoRes = await axios.get(`${apiroot}/chatroom/${chatMember.current}/receive`, {
+          headers: { Authorization: sessionStorage.getItem("JWT") },
+        });
+      } catch(err) {
+        throw new Error(err);
+      }
+
+      let ik = await window.electron.getIdentityKey(userId);
+      let sk = await window.electron.getSchnorrKey(userId);
+      let otpKey = await window.electron.getDHKey(msg.message.otpID, userId);
+      let x3dh = await x3DHReceiver(
+        senderInfoRes.data.identityKey,
+        senderInfoRes.data.schnorrKey,
+        senderInfoRes.data.schnorrSig,
+        msg.message.ephKey,
+        ik,
+        sk,
+        otpKey.private,
+        msg.message.content,
+        msg.message.timestamp
+      );
+      x3dh = JSON.parse(x3dh);
+      if (x3dh.err !== "") {
+        throw new Error(x3dh.err);
+      }
+
+      await window.electron.insertChatroom({_id: chatroom._id, name: chatroom.name, rk: x3dh.rK}, userId);
+      await window.electron.updateChatroom({rck: x3dh.rCK, pubDH: msg.message.DHKey}, chatroom._id, userId);
+
+      msg.message.content = x3dh.plainText;
+      await window.electron.insertMsg(msg, userId);
+  }
+
   const parseMessage = async (msg) => {
-    let myKey;
-    try {
-      myKey = await window.electron.getDHKey(parseInt(msg.message.privKeyId));
-    } catch (err) {
-      console.log(err);
-      toast.error("Msg In: Key not found. Check console for error");
-      return;
-    }
-    let res = await decryptMsg(
-      msg.message.content,
-      msg.message.timestamp,
-      msg.message.pubKey,
-      myKey.privKey
-    );
-    if (res["error"] != "") {
-      console.log(res["error"]);
-      toast.error("Msg In: Failed to decrypt msg. Check console for error");
-      return;
-    }
-    msg.message.content = res["plainText"];
+    // let myKey;
+    // try {
+    //   myKey = await window.electron.getDHKey(parseInt(msg.message.privKeyId));
+    // } catch (err) {
+    //   console.log(err);
+    //   toast.error("Msg In: Key not found. Check console for error");
+    //   return;
+    // }
+    // let res = await decryptMsg(
+    //   msg.message.content,
+    //   msg.message.timestamp,
+    //   msg.message.pubKey,
+    //   myKey.privKey
+    // );
+    // if (res["error"] != "") {
+    //   console.log(res["error"]);
+    //   toast.error("Msg In: Failed to decrypt msg. Check console for error");
+    //   return;
+    // }
+    // msg.message.content = res["plainText"];
     await window.electron.insertMsg(msg);
   };
 
   const resendPendingMessage = async (pendingMsg) => {
     const timestamp = new Date(pendingMsg.timestamp);
     try {
-      const response = await axios.delete(`${apiroot}/user/dh_keys/${chatMember}`, {
+      const response = await axios.delete(`${apiroot}/user/dh_keys/${chatMember.current}`, {
         headers: { Authorization: sessionStorage.getItem("JWT") },
       });
       const otherPubDH = response.data.popped_key.pubKey;
@@ -155,8 +191,8 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
   };
 
   const addMessage = async (data) => {
-    await window.electron.insertMsg(data);
-    let confirmedMsg = await window.electron.getMsg(data._id);
+    await window.electron.insertMsg(data, userId);
+    let confirmedMsg = await window.electron.getMsg(data._id, userId);
     
     if (data.chatroom === chatroom._id) {
       setMessages((prevMsgs) => {
@@ -191,22 +227,18 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
   const handleMsgIn = async (data) => {
     if (data.sender === userId) {
       let hash = await window.electron.sha256(
-        data.message.content + data.message.pubKey + data.message.timestamp
+        data.message.content + data.message.timestamp + data.chatroom
       );
       if (outMsgKeys.current[hash]) {
-        let res = await decryptMsg(
-          data.message.content,
-          data.message.timestamp,
-          outMsgKeys.current[hash],
-          ""
-        );
-        if (res["error"] !== "") {
-          console.log(res["error"]);
-          return toast.error("Msg In: Failed to decrypt msg. Check console for error");
+        let res = await mKDecrypt(outMsgKeys.current[hash], data.message.content);
+        res = JSON.parse(res);
+        if (res.err !== "") {
+          console.log(res.err);
+          return toast.error("Msg In: Failed to send Message. Check console for error");
         }
         delete outMsgKeys.current[hash];
         data.message.hash = hash;
-        data.message.content = res["plainText"];
+        data.message.content = res.plainText;
         await addMessage(data);
       }
       await readMsgReq([data._id]);
@@ -239,7 +271,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     }
     for (let mem of chatroom.members) {
       if (mem !== userId) {
-        setChatMember(mem);
+        chatMember.current = mem;
         break;
       }
     }
@@ -254,7 +286,17 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       console.log(err);
     }
 
+    console.log(response);
+
+    
     let msgIds = [];
+    if (!(await window.electron.chatroomExists(chatroom._id, userId))) {
+      let firstMsg = response.data.shift();
+      console.log(firstMsg);
+      let p = await initMsgReceive(firstMsg);
+      msgIds.push(firstMsg._id);
+    } 
+
     if (response.data.length > 0) {
       for (let i = 0; i < response.data.length; i++) {
         try {
@@ -265,7 +307,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       await readMsgReq(msgIds);
     }
 
-    let finalChat = await window.electron.getMsgs(chatroom._id);
+    let finalChat = await window.electron.getMsgs(chatroom._id, userId);
     setMessages(finalChat);
     setTimeout(() => {
       if (chatBottom.current) {
@@ -279,14 +321,12 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     let response;
 
     try {
-      response = await axios.get(`${apiroot}/chatroom/${chatMember}/send`, {
+      response = await axios.get(`${apiroot}/chatroom/${chatMember.current}/send`, {
         headers: { Authorization: sessionStorage.getItem("JWT") },
       });
     } catch(err) {
       throw new Error(err);
     }
-
-    console.log(response);
 
     let ik = await window.electron.getIdentityKey(userId);
     x3dh = await x3DHSender(
@@ -303,7 +343,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       throw new Error(x3dh.err);
     }
 
-    console.log(x3dh);
     await window.electron.insertChatroom({_id: chatroom._id, name: chatroom.name, rk: x3dh.rK}, userId);
     await window.electron.updateChatroom({sck: x3dh.sCK, privDH: x3dh.dhK.privKey}, chatroom._id, userId);
     
@@ -348,19 +387,9 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       }
     }
     
-    // payload = {
-    //   content: x3dh.cipherText,
-    //   ephKey: x3dh.eK,
-    //   otpID: response.data.otpKey.id,
-    //   DHKey: x3dh.dhK.pubKey,
-    //   timestamp,
-    // };
-
-    console.log(payload);
-    
-    const properHash = await window.electron.sha256(payload.payload.content + payload.payload.timestamp + payload.payload.chatroom);
+    const properHash = await window.electron.sha256(payload.payload.content + payload.payload.timestamp + chatroom._id);
     outMsgKeys.current = { ...outMsgKeys.current, [properHash]: payload.mK };
-    
+
     setMessages((prevMessages) =>
       prevMessages.map((msg) =>
         msg._id === provisionalId ? { ...msg, hash: properHash } : msg

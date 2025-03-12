@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('electron', {
     checkDB: (userId) => ipcRenderer.invoke("checkDB", userId),
     initPerson: (person, userId) => ipcRenderer.invoke("initPerson", person, userId),
     getIdentityKey: (userId) => ipcRenderer.invoke("getIdentityKey", userId),
+    getSchnorrKey: (userId) => ipcRenderer.invoke("getSchnorrKey", userId),
     insertChatroom: (chatroom, userId) => ipcRenderer.invoke("insertChatroom", chatroom, userId),
     updateChatroom: (fields, chatroomId, userId) => ipcRenderer.invoke("updateChatroom", fields, chatroomId, userId),
     insertMsg: (msg, userId) => ipcRenderer.invoke("insertMsg", msg, userId),

@@ -135,6 +135,16 @@ ipcMain.handle("getIdentityKey", async (event, userId) => {
     return res.identity_priv_key;
 });
 
+ipcMain.handle("getSchnorrKey", async (event, userId) => {
+    const db = new database(dbPath(userId));
+    // db.pragma(`key='${args[0]}'`);
+
+    const res = db.prepare("SELECT schnorr_priv_key FROM Person").get();
+    db.close();
+
+    return res.schnorr_priv_key;
+});
+
 ipcMain.handle("insertChatroom", async (event, chatroom, userId) => {
     const db = new database(dbPath(userId));
     // db.pragma(`key='${args[0]}'`);
