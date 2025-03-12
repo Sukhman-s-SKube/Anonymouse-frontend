@@ -41,6 +41,7 @@ const newDBQueries = (db) => {
             send_chain_key STRING,
             receive_chain_key STRING,
             self_priv_dh STRING,
+            self_pub_dh STRING,
             other_pub_dh STRING
             )`
     ;
@@ -145,6 +146,16 @@ ipcMain.handle("getSchnorrKey", async (event, userId) => {
     return res.schnorr_priv_key;
 });
 
+ipcMain.handle("getChatroom", async (event, chatroomId, userId) => {
+    const db = new database(dbPath(userId));
+    // db.pragma(`key='${args[0]}'`);
+
+    const res = db.prepare("SELECT * FROM Chatroom WHERE mongoId = ?").get(chatroomId);
+    db.close();
+
+    return res;
+});
+
 ipcMain.handle("insertChatroom", async (event, chatroom, userId) => {
     const db = new database(dbPath(userId));
     // db.pragma(`key='${args[0]}'`);
@@ -179,20 +190,25 @@ ipcMain.handle("updateChatroom", async (event, fields, chatroomId, userId) => {
         query += `self_priv_dh = ?, `;
         params.push(fields.privDH);
     }
-    if (fields.pubDH) {
-        query += `other_pub_dh = ?, `;
-        params.push(fields.pubDH);
+    if (fields.selfPubDH) {
+        query += `self_pub_dh = ?, `;
+        params.push(fields.selfPubDH);
+    }
+    if (fields.otherPubDH) {
+        if (fields.otherPubDH == ".") {
+            query += `other_pub_dh = NULL, `;
+        }
+        else {
+            query += `other_pub_dh = ?, `;
+            params.push(fields.otherPubDH);
+        }
     }
 
     query = query.substring(0, query.length - 2)
     query += " WHERE mongoId = ?";
-    // console.log(query);
+
     params.push(chatroomId);
-
-    // db.prepare()
     db.prepare(query).run(params);
-
-    // db.prepare(query + "WHERE mongoId = ?").run(chatroomId);
 
     db.close();
 });

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 
 import '@/Components/Chatroom/Chatroom.css';
-import { encryptMsg, decryptMsg, x3DHSender, x3DHReceiver } from '@/Logic/WasmFunctions';
+import { encryptMsg, decryptMsg, x3DHSender, x3DHReceiver, senderFirst, sender } from '@/Logic/WasmFunctions';
 
 import { Button } from '@/Components/ui/button';
 import { Form, FormControl, FormField, FormItem } from '@/Components/ui/form';
@@ -118,8 +118,8 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       }
 
       await window.electron.insertChatroom({_id: chatroom._id, name: chatroom.name, rk: x3dh.rK}, userId);
-      await window.electron.updateChatroom({rck: x3dh.rCK, pubDH: msg.message.DHKey}, chatroom._id, userId);
-
+      await window.electron.updateChatroom({rck: x3dh.rCK, otherPubDH: msg.message.DHKey}, chatroom._id, userId);
+      
       msg.message.content = x3dh.plainText;
       await window.electron.insertMsg(msg, userId);
   }
@@ -286,14 +286,17 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       console.log(err);
     }
 
-    console.log(response);
-
+    // console.log(response);
     
     let msgIds = [];
-    if (!(await window.electron.chatroomExists(chatroom._id, userId))) {
+    if (response.data.length > 0 && !(await window.electron.chatroomExists(chatroom._id, userId))) {
       let firstMsg = response.data.shift();
-      console.log(firstMsg);
-      let p = await initMsgReceive(firstMsg);
+      try {
+        await initMsgReceive(firstMsg);
+      } catch(err) {
+        console.error(err);
+        return toast.error("Getting Msg: Failed to load message.");
+      }
       msgIds.push(firstMsg._id);
     } 
 
@@ -342,9 +345,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     if (x3dh.err != '') {
       throw new Error(x3dh.err);
     }
-
-    await window.electron.insertChatroom({_id: chatroom._id, name: chatroom.name, rk: x3dh.rK}, userId);
-    await window.electron.updateChatroom({sck: x3dh.sCK, privDH: x3dh.dhK.privKey}, chatroom._id, userId);
     
     return {
       payload: {
@@ -355,6 +355,9 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         timestamp,
       },
       mK: x3dh.mK,
+      rK: x3dh.rK,
+      sCk: x3dh.sCK,
+      dhK: x3dh.dhK.privKey,
     };
   }
 
@@ -381,9 +384,50 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       try {
         payload = await initMsgSend(timestamp, values);
       } catch (err) {
-        toast.error("Sending Msg: Failed to send message. Message remains pending.");
         console.error(err);
-        return;
+        return toast.error("Sending Msg: Failed to send message. Message remains pending.");
+      }
+    }
+    else {
+      let dbChatroom = await window.electron.getChatroom(chatroom._id, userId);
+      if (dbChatroom.other_pub_dh) {
+        let initSendChain = await senderFirst(dbChatroom.other_pub_dh, dbChatroom.root_key, values.msg, timestamp);
+        if (initSendChain.err !== "") {
+          console.error(initSendChain.err);
+          return toast.error("Sending Msg: Failed to send message. Message remains pending.");
+        }
+        console.log(initSendChain);
+        await window.electron.updateChatroom({
+          sck: initSendChain.sCK,
+          rk: initSendChain.rK,
+          privDH: initSendChain.dhK.privKey,
+          selfPubDH: initSendChain.dhK.pubKey,
+          otherPubDH: "."}, chatroom._id, userId);
+        payload = {
+          payload: {
+            content: initSendChain.cipherText,
+            DHKey: initSendChain.dhK.pubKey,
+            timestamp,
+          },
+          mK: initSendChain.mK
+        }
+      }
+      else {
+        let conSendChain = await sender(dbChatroom.send_chain_key, values.msg, timestamp);
+        if (conSendChain.err !== "") {
+          console.error(conSendChain.err);
+          return toast.error("Sending Msg: Failed to send message. Message remains pending.");
+        }
+        console.log(conSendChain);
+        await window.electron.updateChatroom({sck: conSendChain.sCK}, chatroom._id, userId);
+        payload = {
+          payload: {
+            content: conSendChain.cipherText,
+            DHKey: dbChatroom.self_pub_dh,
+            timestamp,
+          },
+          mK: conSendChain.mK
+        }
       }
     }
     
@@ -400,6 +444,11 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       chatroomId: chatroom._id,
       message: payload.payload,
     });
+
+    if (!(await window.electron.chatroomExists(chatroom._id, userId))) {
+      await window.electron.insertChatroom({_id: chatroom._id, name: chatroom.name, rk: payload.rK}, userId);
+      await window.electron.updateChatroom({sck: payload.sCK, privDH: payload.dhK, selfPubDH: payload.payload.DHKey}, chatroom._id, userId);
+    }
   };
 
   return (
