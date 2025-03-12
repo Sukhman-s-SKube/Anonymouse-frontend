@@ -73,21 +73,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
     }
   };
 
-  const displayMsg = async (msg) => {
-    let parsedMsg = await window.electron.getMsg(msg._id);
-    if (msg.chatroom === chatroom._id) {
-      setMessages((prevMsgs) => [...prevMsgs, parsedMsg]);
-      setTimeout(() => {
-        if (chatBottom.current) {
-          chatBottom.current.scrollIntoView({ behaviour: 'smooth' });
-        }
-      }, 10);
-      return;
-    }
-    setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [msg.chatroom]: true }));
-    return;
-  };
-
   const initMsgReceive = async (msg) => {
       let senderInfoRes;
       try {
@@ -248,19 +233,14 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       }
       await readMsgReq([data._id]);
       return;
-    } else {
-      let myKey = await window.electron.getDHKey(parseInt(data.message.privKeyId));
-      let res = await decryptMsg(
-        data.message.content,
-        data.message.timestamp,
-        data.message.pubKey,
-        myKey.privKey
-      );
-      if (res["error"] !== "") {
-        console.log(res["error"]);
-        return toast.error("Msg In: Failed to decrypt msg. Check console for error");
+    }
+    else {
+      try {
+        await parseMessage(data);
+      } catch(err) {
+        console.error(err);
+        return toast.error("Getting Msg: Failed to load message.");
       }
-      data.message.content = res["plainText"];
       if (data.chatroom !== chatroom._id) {
         setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true }));
         return;
@@ -315,6 +295,8 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
           return toast.error("Getting Msg: Failed to load message.");
         }
       }
+    }
+    if (msgIds.length > 0) {
       await readMsgReq(msgIds);
     }
 
