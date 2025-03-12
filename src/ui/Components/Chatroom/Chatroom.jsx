@@ -17,13 +17,28 @@ export const formSchema = z.object({
   msg: z.string().min(1),
 });
 
-export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) => {
+const Spinner = () => (
+  <div className="flex items-center justify-center py-4">
+    <svg
+      className="animate-spin h-6 w-6 text-gray-800 dark:text-white"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none" viewBox="0 0 24 24"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+    </svg>
+  </div>
+);
+
+export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newChatMembers, chatrooms = [] }) => {
   const [messages, setMessages] = useState([]);
   const chatMember = useRef("");
   const outMsgKeys = useRef({});
 
   const msgInputRef = useRef(null);
   const chatBottom = useRef(null);
+
+  const [loadingMessages, setLoadingMessages] = useState(true);
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -154,7 +169,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
       });
       setTimeout(() => {
         if (chatBottom.current) {
-          chatBottom.current.scrollIntoView({ behaviour: "smooth" });
+          chatBottom.current.scrollIntoView({ behavior: "smooth" });
         }
       }, 10);
       return;
@@ -203,8 +218,10 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
   };
 
   const getMessages = async () => {
+    setLoadingMessages(true);
     if (chatroom == null) {
       setMessages([]);
+      setLoadingMessages(false);
       return;
     }
     for (let mem of chatroom.members) {
@@ -213,7 +230,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
         break;
       }
     }
-
     let response;
     try {
       response = await axios.get(`${apiroot}/message/${chatroom._id}`, {
@@ -223,7 +239,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
       toast.error("Error getting messages. Check Console");
       console.log(err);
     }
-    
+
     let msgIds = [];
     if (response.data.length > 0 && !(await window.electron.chatroomExists(chatroom._id, userId))) {
       let firstMsg = response.data.shift();
@@ -253,9 +269,10 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
 
     let finalChat = await window.electron.getMsgs(chatroom._id, userId);
     setMessages(finalChat);
+    setLoadingMessages(false);
     setTimeout(() => {
       if (chatBottom.current) {
-        chatBottom.current.scrollIntoView({ behaviour: 'smooth' });
+        chatBottom.current.scrollIntoView({ behavior: 'smooth' });
       }
     }, 10);
   };
@@ -308,6 +325,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
     
     const pendingMessage = {
       _id: provisionalId,
+      provisionalId: provisionalId,
       content: values.msg.trim(),
       sender: userId,
       pending: true,
@@ -377,7 +395,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
 
     setMessages((prevMessages) =>
       prevMessages.map((msg) =>
-        msg._id === provisionalId ? { ...msg, hash: properHash } : msg
+        msg._id === provisionalId ? { ...msg, hash: properHash, pending: false, provisional: false } : msg
       )
     );
     
@@ -396,16 +414,20 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
     <div className="chatroom">
       <h1 className="text-center text-4xl font-bold mb-10 text-green-600">Chatroom</h1>
       <div className="flex-1 overflow-y-scroll p-5 box-border">
-        {messages == null || messages.length == 0
-          ? 'No chats to show'
-          : messages.map((msg) => (
-              <Message
-                content={msg.content}
-                isSender={msg.sender == userId}
-                key={msg.mongoId || msg._id}
-                pending={msg.pending}
-              />
-            ))}
+        {loadingMessages ? (
+          <Spinner />
+        ) : messages == null || messages.length === 0 ? (
+          'No chats to show'
+        ) : (
+          messages.map((msg) => (
+            <Message
+              content={msg.content}
+              isSender={msg.sender === userId}
+              key={msg.mongoId || msg._id}
+              pending={msg.pending}
+            />
+          ))
+        )}
         <div ref={chatBottom} />
       </div>
       {chatroom == null ? '' : 
@@ -433,7 +455,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
             </Button>
           </form>
         </Form>
-      }
+      )}
     </div>
   );
 };
