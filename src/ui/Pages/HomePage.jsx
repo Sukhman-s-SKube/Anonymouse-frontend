@@ -4,8 +4,6 @@ import { io } from "socket.io-client";
 import axios from "axios";
 import { toast } from 'sonner';
 
-import { generateDHKeys } from "@/Logic/WasmFunctions";
-
 import { Chatroom } from "@/Components/Chatroom/Chatroom";
 import { Sidebar } from "@/Components/Sidebar/Sidebar";
 import { Button } from "@/Components/ui/button";
@@ -48,7 +46,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       await axios.delete(`${apiroot}/chatroom/${chatroomId}`, {
         headers: { Authorization: sessionStorage.getItem("JWT") },
       });
-      toast.success(`Chatroom ${chatroomId} successfully deleted.`);
       
       if (window.electron && window.electron.deleteMsgs) {
         await window.electron.deleteMsgs(chatroomId);
@@ -67,7 +64,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
 
   useEffect(() => {
     async function setupSocket() {
-      let tempSoc = await io("http://localhost:8000/", {
+      let tempSoc = await io("https://se4450.duckdns.org/", {
         extraHeaders: { Authorization: sessionStorage.getItem("JWT") },
       });
       setSocket(tempSoc);
@@ -81,40 +78,41 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     if (socket != null) {
       socket.on('connect', async () => {
         await getChatroomsRequest(socket);
+      });
+      // socket.on("joinedUserRoom", (data) => {
+      //   console.log("joined user room:", data.roomId);
+      // });
 
-        socket.on("joinedUserRoom", (data) => {
-          console.log("joined user room:", data.roomId);
-        });
+      socket.on("newChatroom", (chatroomData) => {
+        setChatrooms((prevChatrooms) => [...prevChatrooms, chatroomData]);
+        socket.emit("joinRoom", { chatroomId: chatroomData._id });
+        toast.info(`New chatroom created with ${chatroomData.name}`);
+      });
 
-        socket.on("newChatroom", (chatroomData) => {
-          setChatrooms((prevChatrooms) => [...prevChatrooms, chatroomData]);
-          socket.emit("joinRoom", { chatroomId: chatroomData._id });
-          toast.info(`New chatroom created with ${chatroomData.name}`);
-        });
-
-        socket.on("chatroomDeleted", (data) => {
-            console.log("Chatroom deleted:", data);
-            setChatrooms((prevChatrooms) =>
-              prevChatrooms.filter((chatroom) => chatroom._id !== data.message)
-            );
-            setCurrChatroom((prev) =>
-              prev?._id === data.message ? null : prev
-            );
-            toast.info(`Chatroom ${data.message} was deleted.`);
-          });
+      socket.on("chatroomDeleted", (data) => {
+          console.log("Chatroom deleted:", data);
+          setChatrooms((prevChatrooms) =>
+            prevChatrooms.filter((chatroom) => chatroom._id !== data.message)
+          );
+          setCurrChatroom((prev) =>
+            prev?._id === data.message ? null : prev
+          );
+          toast.info(`Chatroom ${data.message} was deleted.`);
       });
       
       return () => {
         socket.off("newChatroom");
         socket.off("deletedChatroom");
+        socket.off("chatroomDeleted");
+        socket.off("joinedUserRoom");
       };
-    }else{
+    }
+    else {
       console.log("socket did not connnect")
     }
   }, [socket]);
 
   useEffect(() => {
-    console.log(newChatCreated)
     if(newChatCreated){
       setChatrooms((prevChatrooms) => [...prevChatrooms, newChatCreated]);
       if (socket){
@@ -122,7 +120,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       }
     }
     setNewChatCreated();
-    console.log(chatrooms)
     }, [newChatCreated]);
 
   const openNewChat = () => {
