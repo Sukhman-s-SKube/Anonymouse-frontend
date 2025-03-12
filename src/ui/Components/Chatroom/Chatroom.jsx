@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 
 import '@/Components/Chatroom/Chatroom.css';
-import { encryptMsg, decryptMsg, x3DHSender, x3DHReceiver, senderFirst, sender } from '@/Logic/WasmFunctions';
+import { encryptMsg, decryptMsg, x3DHSender, x3DHReceiver, senderFirst, sender, receiverFirst, receiver } from '@/Logic/WasmFunctions';
 
 import { Button } from '@/Components/ui/button';
 import { Form, FormControl, FormField, FormItem } from '@/Components/ui/form';
@@ -125,27 +125,32 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
   }
 
   const parseMessage = async (msg) => {
-    // let myKey;
-    // try {
-    //   myKey = await window.electron.getDHKey(parseInt(msg.message.privKeyId));
-    // } catch (err) {
-    //   console.log(err);
-    //   toast.error("Msg In: Key not found. Check console for error");
-    //   return;
-    // }
-    // let res = await decryptMsg(
-    //   msg.message.content,
-    //   msg.message.timestamp,
-    //   msg.message.pubKey,
-    //   myKey.privKey
-    // );
-    // if (res["error"] != "") {
-    //   console.log(res["error"]);
-    //   toast.error("Msg In: Failed to decrypt msg. Check console for error");
-    //   return;
-    // }
-    // msg.message.content = res["plainText"];
-    await window.electron.insertMsg(msg);
+    let dbChatroom = await window.electron.getChatroom(chatroom._id, userId);
+    if (!dbChatroom.other_pub_dh) {
+      let initReceiveChain = await receiverFirst(
+        msg.message.DHKey,
+        dbChatroom.self_priv_dh,
+        dbChatroom.root_key,
+        msg.message.content,
+        msg.message.timestamp
+      );
+      initReceiveChain = JSON.parse(initReceiveChain);
+      if (initReceiveChain.err !== "") {
+        throw new Error(initReceiveChain.err);
+      }
+      await window.electron.updateChatroom({rck: initReceiveChain.rCK, otherPubDH: msg.message.DHKey, rk: initReceiveChain.rK}, chatroom._id, userId);
+      msg.message.content = initReceiveChain.plainText;
+    }
+    else {
+      let conReceiveChain = await receiver(dbChatroom.receive_chain_key, msg.message.content, msg.message.timestamp);
+      conReceiveChain = JSON.parse(conReceiveChain);
+      if (conReceiveChain.err !== "") {
+        throw new Error(conReceiveChain.err);
+      }
+      await window.electron.updateChatroom({rck: conReceiveChain.rCK, otherPubDH: msg.message.DHKey}, chatroom._id, userId);
+      msg.message.content = conReceiveChain.plainText;
+    }
+    await window.electron.insertMsg(msg, userId);
   };
 
   const resendPendingMessage = async (pendingMsg) => {
@@ -305,7 +310,10 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
         try {
           await parseMessage(response.data[i]);
           msgIds.push(response.data[i]._id);
-        } catch {}
+        } catch(err) {
+          console.error(err);
+          return toast.error("Getting Msg: Failed to load message.");
+        }
       }
       await readMsgReq(msgIds);
     }
@@ -356,7 +364,7 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       },
       mK: x3dh.mK,
       rK: x3dh.rK,
-      sCk: x3dh.sCK,
+      sCK: x3dh.sCK,
       dhK: x3dh.dhK.privKey,
     };
   }
@@ -392,11 +400,11 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       let dbChatroom = await window.electron.getChatroom(chatroom._id, userId);
       if (dbChatroom.other_pub_dh) {
         let initSendChain = await senderFirst(dbChatroom.other_pub_dh, dbChatroom.root_key, values.msg, timestamp);
+        initSendChain = JSON.parse(initSendChain);
         if (initSendChain.err !== "") {
           console.error(initSendChain.err);
           return toast.error("Sending Msg: Failed to send message. Message remains pending.");
         }
-        console.log(initSendChain);
         await window.electron.updateChatroom({
           sck: initSendChain.sCK,
           rk: initSendChain.rK,
@@ -414,11 +422,11 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newC
       }
       else {
         let conSendChain = await sender(dbChatroom.send_chain_key, values.msg, timestamp);
+        conSendChain = JSON.parse(conSendChain);
         if (conSendChain.err !== "") {
           console.error(conSendChain.err);
           return toast.error("Sending Msg: Failed to send message. Message remains pending.");
         }
-        console.log(conSendChain);
         await window.electron.updateChatroom({sck: conSendChain.sCK}, chatroom._id, userId);
         payload = {
           payload: {
