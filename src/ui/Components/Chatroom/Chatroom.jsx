@@ -19,7 +19,7 @@ export const formSchema = z.object({
 });
 
 
-export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot, newChatMembers, chatrooms = [] }) => {
+export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) => {
   const [messages, setMessages] = useState([]);
   const chatMember = useRef("");
   const outMsgKeys = useRef({});

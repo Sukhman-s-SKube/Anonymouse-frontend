@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { useNavigate } from 'react-router';
 import { io } from "socket.io-client";
 import axios from "axios";
 import { toast } from 'sonner';
@@ -25,6 +25,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
   const [darkMode, setDarkMode] = useState(false);
   const [showSidebarContent, setShowSidebarContent] = useState(true);
   const [loadingChatrooms, setLoadingChatrooms] = useState(true); 
+  const navigate = useNavigate();
 
   const currentTheme = darkMode ? darkTheme : lightTheme;
 
@@ -154,6 +155,11 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     setLoadingChatrooms(false);
   };
 
+  const logout = () => {
+    socket.disconnect();
+    navigate('/');
+  }
+
   return (
     <ThemeProvider theme={currentTheme}>
       <div className={`flex flex-row h-screen relative overflow-hidden ${darkMode ? 'dark' : ''}`}>
@@ -199,12 +205,8 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
           />
         )}
         <div className="fixed top-[10px] right-[10px] flex gap-2">
-          <Button variant="settings" onClick={() => setShowSettings(true)}>
-            Settings
-          </Button>
-          <Button variant="logout" onClick={() => socket.disconnect()}>
-            <Link to="/">Log out</Link>
-          </Button>
+          <Button variant="settings" onClick={() => setShowSettings(true)}>Settings</Button>
+          <Button variant="logout" onClick={logout}>Log out</Button>
         </div>
         {showSettings && (
           <SettingsModal
