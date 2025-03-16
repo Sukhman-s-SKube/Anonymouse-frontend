@@ -214,6 +214,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
             currentChatroomId={currChatroom ? currChatroom._id : undefined}
             chatrooms={chatrooms}
             setMsgNotifs={setMsgNotifs}
+            setUnreadCounts={setUnreadCounts}
           />
         )}
         <div className="fixed top-[10px] right-[10px] flex gap-2">
