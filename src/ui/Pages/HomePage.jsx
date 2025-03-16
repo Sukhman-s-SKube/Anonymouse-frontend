@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { io } from "socket.io-client";
 import axios from "axios";
-import { toast } from 'sonner';
+import { toast } from "sonner";
 
 import { Chatroom } from "@/Components/Chatroom/Chatroom";
 import { Sidebar } from "@/Components/Sidebar/Sidebar";
@@ -12,7 +12,7 @@ import { ChatNotifications } from "@/Components/Notifications/ChatNotifications"
 import { SettingsModal } from "@/Components/Settings/SettingsModal";
 
 import { ThemeProvider } from "styled-components";
-import { lightTheme, darkTheme } from "@/Components/ui/themes"; 
+import { lightTheme, darkTheme } from "@/Components/ui/themes";
 
 export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
   const [socket, setSocket] = useState();
@@ -24,19 +24,20 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showSidebarContent, setShowSidebarContent] = useState(true);
-  const [loadingChatrooms, setLoadingChatrooms] = useState(true); 
+  const [loadingChatrooms, setLoadingChatrooms] = useState(true);
+  const [unreadCounts, setUnreadCounts] = useState({});
 
   const currentTheme = darkMode ? darkTheme : lightTheme;
 
   useEffect(() => {
-    const storedPreference = localStorage.getItem('darkMode');
-    setDarkMode(storedPreference === 'true');
+    const storedPreference = localStorage.getItem("darkMode");
+    setDarkMode(storedPreference === "true");
   }, []);
 
   const toggleDarkMode = () => {
     setDarkMode((prevMode) => {
       const newMode = !prevMode;
-      localStorage.setItem('darkMode', newMode ? 'true' : 'false');
+      localStorage.setItem("darkMode", newMode ? "true" : "false");
       return newMode;
     });
   };
@@ -46,13 +47,10 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       await axios.delete(`${apiroot}/chatroom/${chatroomId}`, {
         headers: { Authorization: sessionStorage.getItem("JWT") },
       });
-      
       if (window.electron && window.electron.deleteMsgs) {
         await window.electron.deleteMsgs(chatroomId);
       }
-      
       setChatrooms((prev) => prev.filter((room) => room._id !== chatroomId));
-      
       if (currChatroom && currChatroom._id === chatroomId) {
         setCurrChatroom(chatrooms.filter((room) => room._id !== chatroomId)[0] || null);
       }
@@ -76,7 +74,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
 
   useEffect(() => {
     if (socket != null) {
-      socket.on('connect', async () => {
+      socket.on("connect", async () => {
         await getChatroomsRequest(socket);
       });
 
@@ -87,40 +85,33 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       });
 
       socket.on("chatroomDeleted", (data) => {
-          console.log("Chatroom deleted:", data);
-          setChatrooms((prevChatrooms) =>
-            prevChatrooms.filter((chatroom) => chatroom._id !== data.chatroomID)
-          );
-          setCurrChatroom((prev) =>
-            prev?._id === data.chatroomID ? null : prev
-          );
-          toast.info(`Chatroom ${data.chatroomName} was deleted.`);
+        console.log("Chatroom deleted:", data);
+        setChatrooms((prevChatrooms) =>
+          prevChatrooms.filter((chatroom) => chatroom._id !== data.chatroomID)
+        );
+        setCurrChatroom((prev) => (prev?._id === data.chatroomID ? null : prev));
+        toast.info(`Chatroom ${data.chatroomName} was deleted.`);
       });
-      
+
       return () => {
         socket.off("newChatroom");
-        socket.off("deletedChatroom");
         socket.off("chatroomDeleted");
-        socket.off("joinedUserRoom");
       };
-    }
-    else {
-      console.log("socket did not connnect")
     }
   }, [socket]);
 
   useEffect(() => {
     if (newChatCreated) {
-      let found = chatrooms.some((chatroom) => (chatroom._id === newChatCreated._id) )
+      const found = chatrooms.some((chatroom) => chatroom._id === newChatCreated._id);
       if (!found) {
         setChatrooms((prevChatrooms) => [...prevChatrooms, newChatCreated]);
-        if (socket){
+        if (socket) {
           socket.emit("joinRoom", { chatroomId: newChatCreated._id });
         }
       }
     }
     setNewChatCreated();
-    }, [newChatCreated]);
+  }, [newChatCreated]);
 
   const openNewChat = () => {
     setShowSidebarContent(false);
@@ -131,9 +122,9 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     setAddNewChatToggle(false);
     setTimeout(() => {
       setShowSidebarContent(true);
-    }, 300); 
+    }, 300);
   };
-  
+
   const getChatroomsRequest = async (soc) => {
     setLoadingChatrooms(true);
     let response;
@@ -154,6 +145,30 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     setLoadingChatrooms(false);
   };
 
+  useEffect(() => {
+    const updateUnreadCounts = async () => {
+      const counts = {};
+      for (const room of chatrooms) {
+        if (room?._id) {
+          try {
+            const response = await axios.get(`${apiroot}/message/${room._id}`, {
+              headers: { Authorization: sessionStorage.getItem("JWT") },
+              responseType: "json",
+            });
+            counts[room._id] = Array.isArray(response.data) ? response.data.length : 0;
+          } catch (err) {
+            console.error(`Error fetching unread count for room ${room._id}:`, err);
+            counts[room._id] = 0;
+          }
+        }
+      }
+      setUnreadCounts(counts);
+    };
+    if (chatrooms && chatrooms.length > 0) {
+      updateUnreadCounts();
+    }
+  }, [chatrooms, apiroot]);
+
   return (
     <ThemeProvider theme={currentTheme}>
       <div className={`flex flex-row h-screen relative overflow-hidden ${darkMode ? 'dark' : ''}`}>
@@ -167,11 +182,12 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
         <Sidebar
           username={username}
           chatrooms={chatrooms}
-          loadingChatrooms={loadingChatrooms} 
+          loadingChatrooms={loadingChatrooms}
           currChatroom={currChatroom}
           setCurrChatroom={(room) => {
             setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
             setCurrChatroom(room);
+            setUnreadCounts((prev) => ({ ...prev, [room._id]: 0 }));
           }}
           msgNotifs={msgNotifs}
           setAddNewChat={openNewChat}
@@ -180,6 +196,8 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
           setMsgNotifs={setMsgNotifs}
           showContent={showSidebarContent}
           onDeleteChatroom={handleDeleteChatroom}
+          unreadCounts={unreadCounts}
+          setUnreadCounts={setUnreadCounts}  
         />
         <Chatroom
           chatroom={currChatroom}

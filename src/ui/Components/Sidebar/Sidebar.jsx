@@ -1,12 +1,12 @@
-import React, { useState } from "react";
-
+import React, { useState, useEffect } from "react";
 import { MdOutlineAddBox } from "react-icons/md";
-
 import { Button } from "@/Components/ui/button";
 import { ConfirmModal } from "@/Components/Chatroom/ConfirmModal";
 import { Spinner } from "@/Components/Spinner/Spinner";
+import axios from "axios";
 
 export const Sidebar = ({
+  username,
   chatrooms,
   loadingChatrooms,
   currChatroom,
@@ -15,6 +15,10 @@ export const Sidebar = ({
   setMsgNotifs,
   showContent,
   onDeleteChatroom,
+  apiroot,
+  userId,
+  unreadCounts,
+  setUnreadCounts, // new prop to clear counts on click
 }) => {
   const [chatToDelete, setChatToDelete] = useState(null);
 
@@ -24,7 +28,7 @@ export const Sidebar = ({
 
   const confirmDeletion = () => {
     if (typeof onDeleteChatroom === "function" && chatToDelete) {
-      onDeleteChatroom(chatToDelete.id);
+      onDeleteChatroom(chatToDelete._id);
     }
     setChatToDelete(null);
   };
@@ -38,54 +42,54 @@ export const Sidebar = ({
       {showContent && (
         <>
           <div className="flex justify-between">
-            <h3 className="mt-[0px] text-3xl font-bold">Chats</h3>
+            <h3 className="mt-0 text-3xl font-bold">Chats</h3>
             <MdOutlineAddBox
               size={35}
               className="cursor-pointer"
               onClick={() => setAddNewChat(true)}
             />
           </div>
-          <div className="mt-[5px]">
+          <div className="mt-2">
             {loadingChatrooms ? (
               <Spinner />
             ) : !chatrooms || chatrooms.length === 0 ? (
               "No chatrooms to show"
             ) : (
-              chatrooms.filter(Boolean).map((room, i) => {
-                if (!room._id) {
-                  console.warn("Skipping a chatroom with no _id:", room);
-                  return null;
-                }
-                return (
-                  <div key={room._id} className="flex items-center">
-                    <Button
-                      variant={currChatroom === room ? "selected" : "inverse"}
-                      className="flex-1 my-[10px] text-base"
-                      onClick={() => {
-                        setCurrChatroom(room);
-                        setMsgNotifs((prev) => ({
-                          ...prev,
-                          [room._id]: false,
-                        }));
-                      }}
-                    >
-                      {room.name ?? "Unnamed Chat"}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      className="ml-2"
-                      onClick={() =>
-                        handleDeleteClick({
-                          id: room._id,
-                          name: room.name ?? "Unnamed Chat",
-                        })
-                      }
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                );
-              })
+              chatrooms.filter(Boolean).map((room) => (
+                <div key={room._id} className="flex items-center">
+                  <Button
+                    variant={currChatroom === room ? "selected" : "inverse"}
+                    className="flex-1 my-2 text-base"
+                    onClick={() => {
+                      setCurrChatroom(room);
+                      setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
+                      // Clear unread count when the room is clicked:
+                      setUnreadCounts((prev) => ({ ...prev, [room._id]: 0 }));
+                    }}
+                  >
+                    {room.name ?? "Unnamed Chat"}{" "}
+                    {unreadCounts[room._id] > 0 && (
+                      <span>
+                        (
+                        {unreadCounts[room._id] >= 10 ? "9+" : unreadCounts[room._id]}
+                        )
+                      </span>
+                    )}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="ml-2"
+                    onClick={() =>
+                      handleDeleteClick({
+                        _id: room._id,
+                        name: room.name ?? "Unnamed Chat",
+                      })
+                    }
+                  >
+                    Delete
+                  </Button>
+                </div>
+              ))
             )}
           </div>
         </>
@@ -100,4 +104,3 @@ export const Sidebar = ({
     </div>
   );
 };
-
