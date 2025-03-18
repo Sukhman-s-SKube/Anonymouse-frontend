@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { io } from "socket.io-client";
 import axios from "axios";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
   const [loadingChatrooms, setLoadingChatrooms] = useState(true);
   const [unreadCounts, setUnreadCounts] = useState({});
 
+  const navigate = useNavigate();
   const currentTheme = darkMode ? darkTheme : lightTheme;
 
   useEffect(() => {
@@ -145,6 +146,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     setLoadingChatrooms(false);
   };
 
+  // Fetch unread message counts for each chatroom as soon as chatrooms are loaded.
   useEffect(() => {
     const updateUnreadCounts = async () => {
       const counts = {};
@@ -169,9 +171,14 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     }
   }, [chatrooms, apiroot]);
 
+  const logout = () => {
+    socket.disconnect();
+    navigate("/");
+  };
+
   return (
     <ThemeProvider theme={currentTheme}>
-      <div className={`flex flex-row h-screen relative overflow-hidden ${darkMode ? 'dark' : ''}`}>
+      <div className={`flex flex-row h-screen relative overflow-hidden ${darkMode ? "dark" : ""}`}>
         <NewChat
           isOpen={addNewChatToggle}
           toggle={closeNewChat}
@@ -197,7 +204,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
           showContent={showSidebarContent}
           onDeleteChatroom={handleDeleteChatroom}
           unreadCounts={unreadCounts}
-          setUnreadCounts={setUnreadCounts}  
+          setUnreadCounts={setUnreadCounts}
         />
         <Chatroom
           chatroom={currChatroom}
@@ -221,7 +228,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
           <Button variant="settings" onClick={() => setShowSettings(true)}>
             Settings
           </Button>
-          <Button variant="logout" onClick={() => socket.disconnect()}>
+          <Button variant="logout" onClick={logout}>
             <Link to="/">Log out</Link>
           </Button>
         </div>
