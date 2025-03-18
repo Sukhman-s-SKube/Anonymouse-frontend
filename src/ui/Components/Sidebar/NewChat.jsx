@@ -6,7 +6,6 @@ import axios from 'axios';
 
 import { IoIosArrowRoundBack } from "react-icons/io";
 import { IoMdCheckmark } from "react-icons/io";
-import { Wrapper } from "@/Components/Sidebar/NewChat.styles";
 import { Form, FormControl, FormField, FormItem } from '@/Components/ui/form';
 import { Input } from '@/Components/ui/input';
 import { toast } from 'sonner';
@@ -75,7 +74,7 @@ export const NewChat = ({ isOpen, toggle, apiroot, setNewChatCreated, setCurrCha
   };
 
   return (
-    <Wrapper $isOpen={isOpen}>
+    <div className={`fixed top-0 left-0 h-full w-80 bg-green-600 text-white p-5 overflow-y-auto shadow-lg transform transition-transform duration-300 z-50 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="flex items-center justify-between">
         <IoIosArrowRoundBack
           className="cursor-pointer"
@@ -125,6 +124,6 @@ export const NewChat = ({ isOpen, toggle, apiroot, setNewChatCreated, setCurrCha
           ))
         )}
       </div>
-    </Wrapper>
+    </div>
   );
 };

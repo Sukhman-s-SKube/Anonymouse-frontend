@@ -5,28 +5,6 @@ const spin = keyframes`
   100% { transform: rotate(360deg); }
 `;
 
-export const LoadingOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.7); 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-`;
-
-export const Spinner = styled.div`
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-top: 4px solid #3498db; /* blue color */
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: ${spin} 1s linear infinite;
-`;
-
 export const ToggleContainer = styled.div`
     display: flex; 
     position: relative; 
