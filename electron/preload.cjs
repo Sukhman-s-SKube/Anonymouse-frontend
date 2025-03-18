@@ -17,5 +17,6 @@ contextBridge.exposeInMainWorld('electron', {
     getKeys: (numKeys, userId) => ipcRenderer.invoke("getKeys", numKeys, userId),
     getDHKey: (keyId, userId) => ipcRenderer.invoke("getDHKey", keyId, userId),
     delDHKey: (keyId, userId) => ipcRenderer.invoke("delDHKey", keyId, userId),
+    sysNoti: (title, body) => ipcRenderer.invoke("sysNoti", title, body),
     sha256: (str) => ipcRenderer.invoke("sha256", str),
 });

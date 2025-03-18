@@ -34,7 +34,7 @@ const parseJwt = (token) => {
     return JSON.parse(jsonPayload);
 };
 
-export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
+export const Login = ({ setLoggedIn, setUserId, setUsername, apiroot }) => {
     const [isLoginToggled, setIsLoginToggled] = useState(true);
     const [isLoading, setIsLoading] = useState(false); 
     const usernameRef = useRef(null);

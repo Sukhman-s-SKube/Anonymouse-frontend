@@ -42,8 +42,8 @@ const App = () => {
       <ThemeProvider theme={currentTheme}>
         <Toaster position='top-center' richColors />
         <Routes>
-          <Route path='/' element={<Login setLoggedIn={setLoggedIn} setUserId={setUserId} setUsername={setUsername} apiroot={apiroot} darkMode={darkMode}/>} />
-          <Route path='/home' element={<HomePage loggedIn={loggedIn} username={username} userId={userId} apiroot={apiroot}/>} />
+          <Route path='/' element={<Login setLoggedIn={setLoggedIn} setUserId={setUserId} setUsername={setUsername} apiroot={apiroot}/>} />
+          <Route path='/home' element={<HomePage loggedIn={loggedIn} username={username} userId={userId} apiroot={apiroot} darkMode={darkMode} setDarkMode={setDarkMode}/>} />
         </Routes>
       </ThemeProvider>
     </HashRouter>

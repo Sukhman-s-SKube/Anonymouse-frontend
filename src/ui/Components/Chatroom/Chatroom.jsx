@@ -19,7 +19,7 @@ export const formSchema = z.object({
 });
 
 
-export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) => {
+export const Chatroom = ({ chatroom, userId, socket, apiroot }) => {
   const [messages, setMessages] = useState([]);
   const chatMember = useRef("");
   const outMsgKeys = useRef({});
@@ -154,7 +154,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
       }, 10);
       return;
     }
-    setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true }));
     return;
   };
 
@@ -186,9 +185,9 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
           console.error(err);
           return toast.error("Getting Msg: Failed to load message.");
         }
+        window.electron.sysNoti("New Message", `New message from ${chatroom.name}`);
       }
       else {
-        setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true }));
         return;
       }
       await addMessage(data);

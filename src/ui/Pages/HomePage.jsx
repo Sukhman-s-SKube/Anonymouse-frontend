@@ -15,7 +15,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
   const [socket, setSocket] = useState();
   const [chatrooms, setChatrooms] = useState([]);
   const [currChatroom, setCurrChatroom] = useState();
-  const [msgNotifs, setMsgNotifs] = useState({});
   const [addNewChatToggle, setAddNewChatToggle] = useState(false);
   const [newChatCreated, setNewChatCreated] = useState();
   const [showSettings, setShowSettings] = useState(false);
@@ -26,6 +25,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
   const navigate = useNavigate();
 
   const toggleDarkMode = () => {
+    console.log("test");
     setDarkMode((prevMode) => {
       const newMode = !prevMode;
       localStorage.setItem("darkMode", newMode ? "true" : "false");
@@ -179,15 +179,12 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
         loadingChatrooms={loadingChatrooms}
         currChatroom={currChatroom}
         setCurrChatroom={(room) => {
-          setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
           setCurrChatroom(room);
           setUnreadCounts((prev) => ({ ...prev, [room._id]: 0 }));
         }}
-        msgNotifs={msgNotifs}
         setAddNewChat={openNewChat}
         isNewChatOpen={addNewChatToggle}
         darkMode={darkMode}
-        setMsgNotifs={setMsgNotifs}
         showContent={showSidebarContent}
         onDeleteChatroom={handleDeleteChatroom}
         unreadCounts={unreadCounts}
@@ -197,7 +194,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
         chatroom={currChatroom}
         userId={userId}
         socket={socket}
-        setMsgNotifs={setMsgNotifs}
         apiroot={apiroot}
         onDeleteChatroom={handleDeleteChatroom}
       />
@@ -207,7 +203,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
           userId={userId}
           currentChatroomId={currChatroom ? currChatroom._id : undefined}
           chatrooms={chatrooms}
-          setMsgNotifs={setMsgNotifs}
           setUnreadCounts={setUnreadCounts}
         />
       )}

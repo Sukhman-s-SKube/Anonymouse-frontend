@@ -10,7 +10,6 @@ export const Sidebar = ({
   currChatroom,
   setCurrChatroom,
   setAddNewChat,
-  setMsgNotifs,
   showContent,
   onDeleteChatroom,
   unreadCounts,
@@ -58,7 +57,6 @@ export const Sidebar = ({
                     className="flex-1 my-2 text-base relative"
                     onClick={() => {
                       setCurrChatroom(room);
-                      setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
                       setUnreadCounts((prev) => ({ ...prev, [room._id]: 0 }));
                     }}
                   >
