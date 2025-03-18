@@ -5,8 +5,9 @@ export const ChatNotifications = ({
   socket,
   userId,
   currentChatroomId,
-  chatrooms = [],  
+  chatrooms,
   setMsgNotifs,
+  setUnreadCounts,
 }) => {
   useEffect(() => {
     if (!socket) return;
@@ -15,24 +16,22 @@ export const ChatNotifications = ({
       if (data.sender === userId) return;
 
       if (data.chatroom !== currentChatroomId) {
-        
-        const room = (chatrooms || []).find((r) => r && r._id === data.chatroom);
-        const roomName = room ? room.name : "a chatroom";
-        toast(`New message in ${roomName}`);
+        setUnreadCounts((prev) => {
+          const currentCount = Number(prev[data.chatroom]) || 0;
+          const newCount = currentCount + 1;
+          return { ...prev, [data.chatroom]: newCount };
+        });
 
-        setMsgNotifs((prev) => ({
-          ...prev,
-          [data.chatroom]: true,
-        }));
+        const room = chatrooms.find((r) => r._id === data.chatroom);
+        toast.info(`New message in ${room ? room.name : "chatroom"}`);
       }
     };
 
     socket.on("newMessage", handleNewMessage);
-
     return () => {
       socket.off("newMessage", handleNewMessage);
     };
-  }, [socket, userId, currentChatroomId, chatrooms, setMsgNotifs]);
+  }, [socket, userId, currentChatroomId, chatrooms, setMsgNotifs, setUnreadCounts]);
 
   return null;
 };
