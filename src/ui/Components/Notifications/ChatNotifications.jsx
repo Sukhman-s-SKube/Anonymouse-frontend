@@ -6,6 +6,7 @@ export const ChatNotifications = ({
   userId,
   currentChatroomId,
   chatrooms,
+  setMsgNotifs,
   setUnreadCounts,
 }) => {
   useEffect(() => {
@@ -16,9 +17,9 @@ export const ChatNotifications = ({
 
       if (data.chatroom !== currentChatroomId) {
         setUnreadCounts((prev) => {
-          const currentCount = prev[data.chatroom] || 0;
+          const currentCount = Number(prev[data.chatroom]) || 0;
           const newCount = currentCount + 1;
-          return { ...prev, [data.chatroom]: newCount >= 10 ? "9+" : newCount };
+          return { ...prev, [data.chatroom]: newCount };
         });
 
         const room = chatrooms.find((r) => r._id === data.chatroom);
@@ -30,7 +31,7 @@ export const ChatNotifications = ({
     return () => {
       socket.off("newMessage", handleNewMessage);
     };
-  }, [socket, userId, currentChatroomId, chatrooms, setUnreadCounts]);
+  }, [socket, userId, currentChatroomId, chatrooms, setMsgNotifs, setUnreadCounts]);
 
   return null;
 };

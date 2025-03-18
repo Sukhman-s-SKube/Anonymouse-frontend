@@ -18,7 +18,7 @@ export const Sidebar = ({
   apiroot,
   userId,
   unreadCounts,
-  setUnreadCounts, // new prop to clear counts on click
+  setUnreadCounts,
 }) => {
   const [chatToDelete, setChatToDelete] = useState(null);
 
@@ -63,16 +63,13 @@ export const Sidebar = ({
                     onClick={() => {
                       setCurrChatroom(room);
                       setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
-                      // Clear unread count when the room is clicked:
                       setUnreadCounts((prev) => ({ ...prev, [room._id]: 0 }));
                     }}
                   >
                     {room.name ?? "Unnamed Chat"}{" "}
-                    {unreadCounts[room._id] > 0 && (
+                    {Number(unreadCounts[room._id]) > 0 && (
                       <span>
-                        (
-                        {unreadCounts[room._id] >= 10 ? "9+" : unreadCounts[room._id]}
-                        )
+                        ({Number(unreadCounts[room._id])})
                       </span>
                     )}
                   </Button>
