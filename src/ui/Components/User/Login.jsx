@@ -8,8 +8,6 @@ import { useNavigate } from 'react-router';
 
 import { genOnRegister, generateDHKeys } from '@/Logic/WasmFunctions';
 
-import './Login.css'
-
 import { Button } from '@/Components/ui/button';
 import { 
     Form,
@@ -67,7 +65,6 @@ export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
             
             sessionStorage.setItem("JWT", response.data.token);
             decodedToken = parseJwt(response.data.token);
-            console.log(response);
             if (response.data.otpKeys < 20) {
                 let dhKeys = await generateDHKeys(100);
                 dhKeys = JSON.parse(dhKeys);
@@ -140,58 +137,51 @@ export const Login = ({setLoggedIn, setUserId, setUsername, apiroot }) => {
     };
 
     return(
-        <>
-            {/* {isLoading && (
-                <LoadingOverlay>
-                    <Spinner />
-                </LoadingOverlay>
-            )} */}
-            <div className="login-container">
-                <h2 className="text-center text-2xl font-bold">{isLoginToggled ? 'Login' : "Register"}</h2>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(isLoginToggled ? loginRequest : registerRequest)} className="space-y-8">
-                        <FormField
-                            control={form.control}
-                            name="username"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Username</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Username" {...field} ref={usernameRef}/>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="password"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Password</FormLabel>
-                                    <FormControl>
-                                        <Input type="password" placeholder="Password" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        {isLoading ? 
-                            <Button className="w-full text-base" disabled>
-                            <Loader2 className="animate-spin" />
-                                Please wait
-                            </Button> : 
-                            <Button className="w-full text-base" type="submit">{isLoginToggled ? 'Login' : "Register"}</Button>
-                        }
-                    </form>
-                </Form>
-                <ToggleContainer>
-                    <ToggleBtnBg $isLoginToggled={isLoginToggled}/>
-                    
-                    <ToggleBtn $isLoginToggled={isLoginToggled} onClick={() => setIsLoginToggled(true)}>Have an account?<br />Log in here</ToggleBtn>
-                    <ToggleBtn $isLoginToggled={!isLoginToggled} onClick={() => setIsLoginToggled(false)}>New?<br />Register Here</ToggleBtn>
-                </ToggleContainer>
-            </div>
-        </>
+        <div className={`w-[300px] mt-[100px] mb-[100px] mr-auto ml-auto text-center`}>
+            <h2 className="text-center text-2xl font-bold">{isLoginToggled ? 'Login' : "Register"}</h2>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(isLoginToggled ? loginRequest : registerRequest)} className="space-y-8">
+                    <FormField
+                        control={form.control}
+                        name="username"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Username</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Username" {...field} ref={usernameRef}/>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Password</FormLabel>
+                                <FormControl>
+                                    <Input type="password" placeholder="Password" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    {isLoading ? 
+                        <Button className="w-full text-base" disabled>
+                        <Loader2 className="animate-spin" />
+                            Please wait
+                        </Button> : 
+                        <Button className="w-full text-base" type="submit">{isLoginToggled ? 'Login' : "Register"}</Button>
+                    }
+                </form>
+            </Form>
+            <ToggleContainer>
+                <ToggleBtnBg $isLoginToggled={isLoginToggled}/>
+                
+                <ToggleBtn $isLoginToggled={isLoginToggled} onClick={() => setIsLoginToggled(true)}>Have an account?<br />Log in here</ToggleBtn>
+                <ToggleBtn $isLoginToggled={!isLoginToggled} onClick={() => setIsLoginToggled(false)}>New?<br />Register Here</ToggleBtn>
+            </ToggleContainer>
+        </div>
     );
 };

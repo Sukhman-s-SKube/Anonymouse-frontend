@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Toaster } from 'sonner';
-import { BrowserRouter, Routes, Route, HashRouter } from 'react-router';
+import { Routes, Route, HashRouter } from 'react-router';
 
-import { Login } from './Components/User/Login';
+import { Login } from '@/Components/User/Login';
 import { HomePage } from '@/Pages/HomePage';
-import { lightTheme, darkTheme } from './Components/ui/themes';
+import { ThemeProvider } from 'styled-components';
+import { lightTheme, darkTheme } from '@/Components/ui/themes';
 
 import './App.css';
 import './wasm_exec.js';
-
 
 const apiroot = 'https://se4450.duckdns.org/api';
 
@@ -19,6 +19,8 @@ const App = () => {
   const [userId, setUserId] = useState("");
   const [username, setUsername] = useState("");
   const [darkMode, setDarkMode] = useState(false);
+  
+  const currentTheme = darkMode ? darkTheme : lightTheme;
 
   useEffect(() => {
     async function loadWasm() {
@@ -29,17 +31,21 @@ const App = () => {
       setIsWasmLoaded(true);
     }
 
+    const storedPreference = localStorage.getItem("darkMode");
+    setDarkMode(storedPreference === "true");
     loadWasm();
   }, []);
 
 
   return (
     <HashRouter>
-      <Toaster position='top-center' richColors />
-      <Routes>
-        <Route path='/' element={<Login setLoggedIn={setLoggedIn} setUserId={setUserId} setUsername={setUsername} apiroot={apiroot}/>} />
-        <Route path='/home' element={<HomePage loggedIn={loggedIn} username={username} userId={userId} apiroot={apiroot}/>} />
-      </Routes>
+      <ThemeProvider theme={currentTheme}>
+        <Toaster position='top-center' richColors />
+        <Routes>
+          <Route path='/' element={<Login setLoggedIn={setLoggedIn} setUserId={setUserId} setUsername={setUsername} apiroot={apiroot} darkMode={darkMode}/>} />
+          <Route path='/home' element={<HomePage loggedIn={loggedIn} username={username} userId={userId} apiroot={apiroot}/>} />
+        </Routes>
+      </ThemeProvider>
     </HashRouter>
   );
 };

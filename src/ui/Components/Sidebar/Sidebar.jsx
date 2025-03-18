@@ -3,10 +3,8 @@ import { MdOutlineAddBox } from "react-icons/md";
 import { Button } from "@/Components/ui/button";
 import { ConfirmModal } from "@/Components/Chatroom/ConfirmModal";
 import { Spinner } from "@/Components/Spinner/Spinner";
-import axios from "axios";
 
 export const Sidebar = ({
-  username,
   chatrooms,
   loadingChatrooms,
   currChatroom,
@@ -15,8 +13,6 @@ export const Sidebar = ({
   setMsgNotifs,
   showContent,
   onDeleteChatroom,
-  apiroot,
-  userId,
   unreadCounts,
   setUnreadCounts,
 }) => {
@@ -59,7 +55,7 @@ export const Sidebar = ({
                 <div key={room._id} className="flex items-center">
                   <Button
                     variant={currChatroom === room ? "selected" : "inverse"}
-                    className="flex-1 my-2 text-base"
+                    className="flex-1 my-2 text-base relative"
                     onClick={() => {
                       setCurrChatroom(room);
                       setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
@@ -68,9 +64,7 @@ export const Sidebar = ({
                   >
                     {room.name ?? "Unnamed Chat"}{" "}
                     {Number(unreadCounts[room._id]) > 0 && (
-                      <span>
-                        ({Number(unreadCounts[room._id])})
-                      </span>
+                        <span className="bg-red-600 text-neutral-100 p-px text-sm absolute -top-2 -right-1 flex items-center justify-center rounded-full min-w-[1.25rem] h-5 px-1">{Number(unreadCounts[room._id])}</span>
                     )}
                   </Button>
                   <Button

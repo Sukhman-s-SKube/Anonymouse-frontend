@@ -39,23 +39,14 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
   }, [chatroom]);
 
   useEffect(() => {
-    if (socket != null && chatroom != null) {
-      getMessages();
-      socket.on('newMessage', handleMsgIn);
-      return () => socket.off('newMessage', handleMsgIn);
-    }
-  }, [socket, chatroom]);
-
-  useEffect(() => {
     if (!socket || !chatroom) return;
-    const handleReconnect = () => {
-      console.log("Socket reconnected – refreshing messages");
-      getMessages();
-    };
-    socket.on("reconnect", handleReconnect);
+    getMessages();
+    socket.on('newMessage', handleMsgIn);
+    socket.on("reconnect", getMessages);
     return () => {
-      socket.off("reconnect", handleReconnect);
-    };
+      socket.off("reconnect", getMessages);
+      socket.off('newMessage', handleMsgIn);
+    }
   }, [socket, chatroom]);
 
   const readMsgReq = async (msgIds) => {

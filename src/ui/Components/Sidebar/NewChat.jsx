@@ -35,7 +35,7 @@ export const NewChat = ({ isOpen, toggle, apiroot, setNewChatCreated, setCurrCha
     }
   }, [form, isOpen]);
 
-  const searchUserReq = async (values) => {
+  const searchUserReq =  async (values) => {
     setLoadingSearch(true);
     let response;
     try {
@@ -89,7 +89,7 @@ export const NewChat = ({ isOpen, toggle, apiroot, setNewChatCreated, setCurrCha
         />
       </div>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(searchUserReq)} className="flex py-5">
+        <form onSubmit={form.handleSubmit(searchUserReq)} onChange={form.handleSubmit(searchUserReq)} className="flex py-5">
           <FormField
             control={form.control}
             name="usernameSearch"
