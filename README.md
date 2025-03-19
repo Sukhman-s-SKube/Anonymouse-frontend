@@ -1,3 +1,8 @@
+## Node Versions
+
+Node: v22.11.0
+Npm: v11.1.0
+
 ## Available Scripts
 
 In the project directory, you can run:
