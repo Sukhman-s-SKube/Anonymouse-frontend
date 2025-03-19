@@ -122,7 +122,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
         headers: { Authorization: sessionStorage.getItem("JWT") },
       });
     } catch (err) {
-      toast.error("Error getting chatrooms. Check Console");
+      toast.error("Trouble getting chatrooms.");
       //console.log(err);
       setLoadingChatrooms(false);
       return;

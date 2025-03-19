@@ -68,7 +68,7 @@ export const Login = ({ setLoggedIn, setUserId, setUsername, apiroot }) => {
             if (response.data.otpKeys < 20) {
                 let dhKeys = await generateDHKeys(100);
                 dhKeys = JSON.parse(dhKeys);
-                if (dhKeys.err != '') {
+                if (dhKeys.err !== "") {
                     throw new Error(dhKeys.err)
                 }
                 await window.electron.insertDHKeys(dhKeys.keys, decodedToken.user_id);
@@ -81,7 +81,7 @@ export const Login = ({ setLoggedIn, setUserId, setUsername, apiroot }) => {
             //console.log(err);
             setLoggedIn(false);
             usernameRef.current.focus();
-            toast.error("Login: Failed to login. Check console for error");
+            toast.error("Failed to login.");
             setIsLoading(false);
             return;
         }
@@ -99,7 +99,7 @@ export const Login = ({ setLoggedIn, setUserId, setUsername, apiroot }) => {
         try {
             let keyGen = await genOnRegister();
             keyGen = JSON.parse(keyGen);
-            if (keyGen.err != '') {
+            if (keyGen.err !== "") {
                 throw new Error(keyGen.err)
             }
             
@@ -128,7 +128,8 @@ export const Login = ({ setLoggedIn, setUserId, setUsername, apiroot }) => {
             //console.log(err);
             setLoggedIn(false);
             usernameRef.current.focus();
-            toast.error("Register: Failed to register. Check console for error");
+            if(err.status === 400)  toast.error("Failed to register. This user already exists.");
+            else toast.error("Failed to register.");
             setIsLoading(false);
             return;
         } finally {
