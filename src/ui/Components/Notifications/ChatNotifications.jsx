@@ -37,7 +37,7 @@ export const ChatNotifications = ({
   useEffect(() => {
     async function updateBadge() {
       if (!unreadCounts) {
-        window.electron.setBadgeNotiCount(0);
+        await window.electron.setBadgeNotiCount(0);
         return;
       }
   
