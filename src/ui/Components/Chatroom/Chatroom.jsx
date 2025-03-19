@@ -19,7 +19,7 @@ export const formSchema = z.object({
 });
 
 
-export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) => {
+export const Chatroom = ({ chatroom, userId, socket, apiroot }) => {
   const [messages, setMessages] = useState([]);
   const chatMember = useRef("");
   const outMsgKeys = useRef({});
@@ -39,23 +39,14 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
   }, [chatroom]);
 
   useEffect(() => {
-    if (socket != null && chatroom != null) {
-      getMessages();
-      socket.on('newMessage', handleMsgIn);
-      return () => socket.off('newMessage', handleMsgIn);
-    }
-  }, [socket, chatroom]);
-
-  useEffect(() => {
     if (!socket || !chatroom) return;
-    const handleReconnect = () => {
-      console.log("Socket reconnected – refreshing messages");
-      getMessages();
-    };
-    socket.on("reconnect", handleReconnect);
+    getMessages();
+    socket.on('newMessage', handleMsgIn);
+    socket.on("reconnect", getMessages);
     return () => {
-      socket.off("reconnect", handleReconnect);
-    };
+      socket.off("reconnect", getMessages);
+      socket.off('newMessage', handleMsgIn);
+    }
   }, [socket, chatroom]);
 
   const readMsgReq = async (msgIds) => {
@@ -163,7 +154,6 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
       }, 10);
       return;
     }
-    setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true }));
     return;
   };
 
@@ -195,9 +185,9 @@ export const Chatroom = ({ chatroom, userId, socket, setMsgNotifs, apiroot }) =>
           console.error(err);
           return toast.error("Getting Msg: Failed to load message.");
         }
+        window.electron.sysNoti("New Message", `New message from ${chatroom.name}`);
       }
       else {
-        setMsgNotifs((prevNotifs) => ({ ...prevNotifs, [data.chatroom]: true }));
         return;
       }
       await addMessage(data);

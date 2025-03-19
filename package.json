@@ -1,6 +1,6 @@
 {
-  "name": "anonymouse",
-  "version": "0.1.0",
+  "name": "AnonyMouse",
+  "version": "1.0.0",
   "private": true,
   "main": "electron/main.js",
   "type": "module",
@@ -17,6 +17,7 @@
     "concurrently": "^9.1.0",
     "cross-env": "^7.0.3",
     "electron-is-dev": "^3.0.1",
+    "electron-windows-badge": "^1.1.0",
     "lucide-react": "^0.473.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

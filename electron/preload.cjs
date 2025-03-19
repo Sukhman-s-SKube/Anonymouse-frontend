@@ -1,4 +1,4 @@
-const { ipcRenderer, contextBridge } = require('electron');
+const { app, ipcRenderer, contextBridge } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
     createDB: (userId) => ipcRenderer.invoke("createDB", userId),
@@ -17,5 +17,20 @@ contextBridge.exposeInMainWorld('electron', {
     getKeys: (numKeys, userId) => ipcRenderer.invoke("getKeys", numKeys, userId),
     getDHKey: (keyId, userId) => ipcRenderer.invoke("getDHKey", keyId, userId),
     delDHKey: (keyId, userId) => ipcRenderer.invoke("delDHKey", keyId, userId),
-    sha256: (str) => ipcRenderer.invoke("sha256", str),
+    sysNoti: (title, body) => ipcRenderer.invoke("sysNoti", title, body),
+    setBadgeNotiCount: async (badgeCount) => {await setBadgeNotiCount(badgeCount)},
+    sha256:  (str) => ipcRenderer.invoke("sha256", str),
 });
+
+const setBadgeNotiCount = async (badgeCount) => {
+    if (process.platform != 'win32') {
+        ipcRenderer.invoke("updateBadge", badgeCount)
+        return;
+    }
+    if (badgeCount > 0) {
+        ipcRenderer.sendSync('update-badge', badgeCount);
+    }
+    else {
+        ipcRenderer.sendSync('update-badge', null);
+    }
+};

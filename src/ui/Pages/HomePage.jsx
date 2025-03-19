@@ -11,31 +11,21 @@ import { NewChat } from "@/Components/Sidebar/NewChat";
 import { ChatNotifications } from "@/Components/Notifications/ChatNotifications";
 import { SettingsModal } from "@/Components/Settings/SettingsModal";
 
-import { ThemeProvider } from "styled-components";
-import { lightTheme, darkTheme } from "@/Components/ui/themes";
-
-export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
+export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDarkMode }) => {
   const [socket, setSocket] = useState();
   const [chatrooms, setChatrooms] = useState([]);
   const [currChatroom, setCurrChatroom] = useState();
-  const [msgNotifs, setMsgNotifs] = useState({});
   const [addNewChatToggle, setAddNewChatToggle] = useState(false);
   const [newChatCreated, setNewChatCreated] = useState();
   const [showSettings, setShowSettings] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [showSidebarContent, setShowSidebarContent] = useState(true);
   const [loadingChatrooms, setLoadingChatrooms] = useState(true);
   const [unreadCounts, setUnreadCounts] = useState({});
 
   const navigate = useNavigate();
-  const currentTheme = darkMode ? darkTheme : lightTheme;
-
-  useEffect(() => {
-    const storedPreference = localStorage.getItem("darkMode");
-    setDarkMode(storedPreference === "true");
-  }, []);
 
   const toggleDarkMode = () => {
+    console.log("test");
     setDarkMode((prevMode) => {
       const newMode = !prevMode;
       localStorage.setItem("darkMode", newMode ? "true" : "false");
@@ -86,7 +76,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
       });
 
       socket.on("chatroomDeleted", (data) => {
-        console.log("Chatroom deleted:", data);
         setChatrooms((prevChatrooms) =>
           prevChatrooms.filter((chatroom) => chatroom._id !== data.chatroomID)
         );
@@ -143,12 +132,12 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
     response.data.forEach((room) => {
       soc.emit("joinRoom", { chatroomId: room._id });
     });
-    setLoadingChatrooms(false);
+    setLoadingChatrooms(false)
   };
 
-  // Fetch unread message counts for each chatroom as soon as chatrooms are loaded.
   useEffect(() => {
     const updateUnreadCounts = async () => {
+      setLoadingChatrooms(true)
       const counts = {};
       for (const room of chatrooms) {
         if (room?._id) {
@@ -165,11 +154,12 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
         }
       }
       setUnreadCounts(counts);
+      setLoadingChatrooms(false)
     };
     if (chatrooms && chatrooms.length > 0) {
       updateUnreadCounts();
     }
-  }, [chatrooms, apiroot]);
+  }, [chatrooms]);
 
   const logout = () => {
     socket.disconnect();
@@ -177,70 +167,64 @@ export const HomePage = ({ loggedIn, username, userId, apiroot }) => {
   };
 
   return (
-    <ThemeProvider theme={currentTheme}>
-      <div className={`flex flex-row h-screen relative overflow-hidden ${darkMode ? "dark" : ""}`}>
-        <NewChat
-          isOpen={addNewChatToggle}
-          toggle={closeNewChat}
-          apiroot={apiroot}
-          setNewChatCreated={setNewChatCreated}
-          setCurrChatroom={setCurrChatroom}
-        />
-        <Sidebar
-          username={username}
+    <div className={`flex flex-row h-screen relative overflow-hidden ${darkMode ? "dark" : ""}`}>
+      <NewChat
+        isOpen={addNewChatToggle}
+        toggle={closeNewChat}
+        apiroot={apiroot}
+        setNewChatCreated={setNewChatCreated}
+        setCurrChatroom={setCurrChatroom}
+      />
+      <Sidebar
+        username={username}
+        chatrooms={chatrooms}
+        loadingChatrooms={loadingChatrooms}
+        currChatroom={currChatroom}
+        setCurrChatroom={(room) => {
+          setCurrChatroom(room);
+          setUnreadCounts((prev) => ({ ...prev, [room._id]: 0 }));
+        }}
+        setAddNewChat={openNewChat}
+        isNewChatOpen={addNewChatToggle}
+        darkMode={darkMode}
+        showContent={showSidebarContent}
+        onDeleteChatroom={handleDeleteChatroom}
+        unreadCounts={unreadCounts}
+        setUnreadCounts={setUnreadCounts}
+      />
+      <Chatroom
+        chatroom={currChatroom}
+        userId={userId}
+        socket={socket}
+        apiroot={apiroot}
+        onDeleteChatroom={handleDeleteChatroom}
+      />
+      {socket && (
+        <ChatNotifications
+          socket={socket}
+          userId={userId}
+          currentChatroomId={currChatroom ? currChatroom._id : undefined}
           chatrooms={chatrooms}
-          loadingChatrooms={loadingChatrooms}
-          currChatroom={currChatroom}
-          setCurrChatroom={(room) => {
-            setMsgNotifs((prev) => ({ ...prev, [room._id]: false }));
-            setCurrChatroom(room);
-            setUnreadCounts((prev) => ({ ...prev, [room._id]: 0 }));
-          }}
-          msgNotifs={msgNotifs}
-          setAddNewChat={openNewChat}
-          isNewChatOpen={addNewChatToggle}
-          darkMode={darkMode}
-          setMsgNotifs={setMsgNotifs}
-          showContent={showSidebarContent}
-          onDeleteChatroom={handleDeleteChatroom}
           unreadCounts={unreadCounts}
           setUnreadCounts={setUnreadCounts}
         />
-        <Chatroom
-          chatroom={currChatroom}
-          userId={userId}
-          socket={socket}
-          setMsgNotifs={setMsgNotifs}
-          apiroot={apiroot}
-          onDeleteChatroom={handleDeleteChatroom}
-        />
-        {socket && (
-          <ChatNotifications
-            socket={socket}
-            userId={userId}
-            currentChatroomId={currChatroom ? currChatroom._id : undefined}
-            chatrooms={chatrooms}
-            setMsgNotifs={setMsgNotifs}
-            setUnreadCounts={setUnreadCounts}
-          />
-        )}
-        <div className="fixed top-[10px] right-[10px] flex gap-2">
-          <Button variant="settings" onClick={() => setShowSettings(true)}>
-            Settings
-          </Button>
-          <Button variant="logout" onClick={logout}>
-            <Link to="/">Log out</Link>
-          </Button>
-        </div>
-        {showSettings && (
-          <SettingsModal
-            onClose={() => setShowSettings(false)}
-            darkMode={darkMode}
-            toggleDarkMode={toggleDarkMode}
-            apiroot={apiroot}
-          />
-        )}
+      )}
+      <div className="fixed top-[10px] right-[10px] flex gap-2">
+        <Button variant="settings" onClick={() => setShowSettings(true)}>
+          Settings
+        </Button>
+        <Button variant="logout" onClick={logout}>
+          <Link to="/">Log out</Link>
+        </Button>
       </div>
-    </ThemeProvider>
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          darkMode={darkMode}
+          toggleDarkMode={toggleDarkMode}
+          apiroot={apiroot}
+        />
+      )}
+    </div>
   );
 };

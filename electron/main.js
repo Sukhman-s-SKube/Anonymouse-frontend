@@ -1,11 +1,12 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Notification } from 'electron';
 import path from 'path'; 
 import isDev from 'electron-is-dev';
 import database from 'better-sqlite3-multiple-ciphers';
+import Badge from 'electron-windows-badge';
 import { createHash } from 'crypto';
 import fs from "fs";
 
-let mainWin
+let win;
 
 const dbPath = (userId) => {
     return path.join(isDev ? app.getAppPath() : app.getPath("userData"), userId + ".db");
@@ -61,16 +62,24 @@ const newDBQueries = (db) => {
 };
 
 app.on('ready', () => {
-    const win = new BrowserWindow({
+    win = new BrowserWindow({
         width: 1280,
         height: 720,
         webPreferences: {
-            preload: path.join(app.getAppPath(), isDev ? '.' : '..', '/electron/preload.cjs')
-        }
+            preload: path.join(app.getAppPath(), isDev ? '.' : '..', '/electron/preload.cjs'),
+            // devTools: isDev
+        },
+        title: 'AnonyMouse'
     });
 
     if (isDev) win.loadURL('http://localhost:3000');
     else win.loadFile(path.join(app.getAppPath(), '/dist-react/index.html'));
+
+    if (process.platform == 'win32') {
+        app.setAppUserModelId(app.name);
+        new Badge(win);
+    }
+
 });
 
 app.on('window-all-closed', () => {
@@ -80,7 +89,7 @@ app.on('window-all-closed', () => {
 });
   
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) mainWin = createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
 ipcMain.handle("createDB", async (event, userId) => {
@@ -286,6 +295,16 @@ ipcMain.handle("delDHKey", async (event, keyId, userId) => {
     const delData = db.prepare("DELETE FROM DHKey WHERE id = ?").run(keyId);
     db.close();
 });
+
+ipcMain.handle("sysNoti", (event, title, body) => {
+    if (!win.isFocused()) {
+        new Notification({title: title, body: body}).show()
+    }
+});
+
+ipcMain.handle("updateBadge", (event, badgeCount) => {
+    app.setBadgeCount(badgeCount);
+})
 
 ipcMain.handle("sha256", async (event, str) => {
     let hash = createHash('sha256').update(str).digest('base64')

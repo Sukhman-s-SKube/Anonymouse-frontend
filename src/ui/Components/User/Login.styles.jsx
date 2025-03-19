@@ -1,9 +1,4 @@
-import styled, { keyframes } from "styled-components";
-
-const spin = keyframes`
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-`;
+import styled from "styled-components";
 
 export const ToggleContainer = styled.div`
     display: flex; 

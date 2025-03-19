@@ -6,7 +6,7 @@ export const ChatNotifications = ({
   userId,
   currentChatroomId,
   chatrooms,
-  setMsgNotifs,
+  unreadCounts,
   setUnreadCounts,
 }) => {
   useEffect(() => {
@@ -24,6 +24,7 @@ export const ChatNotifications = ({
 
         const room = chatrooms.find((r) => r._id === data.chatroom);
         toast.info(`New message in ${room ? room.name : "chatroom"}`);
+        window.electron.sysNoti("New Message", `New message from ${room ? room.name : "chatroom"}`);
       }
     };
 
@@ -31,7 +32,24 @@ export const ChatNotifications = ({
     return () => {
       socket.off("newMessage", handleNewMessage);
     };
-  }, [socket, userId, currentChatroomId, chatrooms, setMsgNotifs, setUnreadCounts]);
+  }, [socket, userId, currentChatroomId, chatrooms]);
+
+  useEffect(() => {
+    async function updateBadge() {
+      if (!unreadCounts) {
+        await window.electron.setBadgeNotiCount(0);
+        return;
+      }
+  
+      let notiCount = 0;
+      for (let room in unreadCounts) {
+        notiCount += unreadCounts[room];
+      }
+      await window.electron.setBadgeNotiCount(notiCount);
+    }
+    updateBadge();
+
+  }, [unreadCounts])
 
   return null;
 };
