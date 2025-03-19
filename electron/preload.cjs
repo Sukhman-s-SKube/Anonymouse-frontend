@@ -18,13 +18,13 @@ contextBridge.exposeInMainWorld('electron', {
     getDHKey: (keyId, userId) => ipcRenderer.invoke("getDHKey", keyId, userId),
     delDHKey: (keyId, userId) => ipcRenderer.invoke("delDHKey", keyId, userId),
     sysNoti: (title, body) => ipcRenderer.invoke("sysNoti", title, body),
-    setBadgeNotiCount: (badgeCount) => {setBadgeNotiCount(badgeCount)},
-    sha256: (str) => ipcRenderer.invoke("sha256", str),
+    setBadgeNotiCount: async (badgeCount) => {await setBadgeNotiCount(badgeCount)},
+    sha256:  (str) => ipcRenderer.invoke("sha256", str),
 });
 
-const setBadgeNotiCount = (badgeCount) => {
+const setBadgeNotiCount = async (badgeCount) => {
     if (process.platform != 'win32') {
-        app.setBadgeCount(badgeCount);
+        ipcRenderer.invoke("updateBadge", badgeCount)
         return;
     }
     if (badgeCount > 0) {

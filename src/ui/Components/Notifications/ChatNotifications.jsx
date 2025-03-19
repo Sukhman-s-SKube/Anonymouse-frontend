@@ -35,16 +35,19 @@ export const ChatNotifications = ({
   }, [socket, userId, currentChatroomId, chatrooms]);
 
   useEffect(() => {
-    if (!unreadCounts) {
-      window.electron.setBadgeNotiCount(0);
-      return;
+    async function updateBadge() {
+      if (!unreadCounts) {
+        window.electron.setBadgeNotiCount(0);
+        return;
+      }
+  
+      let notiCount = 0;
+      for (let room in unreadCounts) {
+        notiCount += unreadCounts[room];
+      }
+      await window.electron.setBadgeNotiCount(notiCount);
     }
-
-    let notiCount = 0;
-    for (let room in unreadCounts) {
-      notiCount += unreadCounts[room];
-    }
-    window.electron.setBadgeNotiCount(notiCount);
+    updateBadge();
 
   }, [unreadCounts])
 

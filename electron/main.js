@@ -302,6 +302,10 @@ ipcMain.handle("sysNoti", (event, title, body) => {
     }
 });
 
+ipcMain.handle("updateBadge", (event, badgeCount) => {
+    app.setBadgeCount(badgeCount);
+})
+
 ipcMain.handle("sha256", async (event, str) => {
     let hash = createHash('sha256').update(str).digest('base64')
     return hash;
