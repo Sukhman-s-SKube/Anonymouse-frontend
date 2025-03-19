@@ -67,7 +67,7 @@ app.on('ready', () => {
         height: 720,
         webPreferences: {
             preload: path.join(app.getAppPath(), isDev ? '.' : '..', '/electron/preload.cjs'),
-            // devTools: isDev
+            devTools: isDev
         },
         title: 'AnonyMouse'
     });
@@ -95,7 +95,7 @@ app.on('activate', () => {
 ipcMain.handle("createDB", async (event, userId) => {
     if (fs.existsSync(dbPath(userId))) {
         fs.unlink(dbPath(userId), (err) => {
-            if (err) console.log(err);
+            if (err); //console.log(err);
         });
     }
     const db = new database(dbPath(userId));

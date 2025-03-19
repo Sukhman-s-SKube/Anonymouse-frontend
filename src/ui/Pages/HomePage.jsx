@@ -25,7 +25,6 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
   const navigate = useNavigate();
 
   const toggleDarkMode = () => {
-    console.log("test");
     setDarkMode((prevMode) => {
       const newMode = !prevMode;
       localStorage.setItem("darkMode", newMode ? "true" : "false");
@@ -46,7 +45,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
         setCurrChatroom(chatrooms.filter((room) => room._id !== chatroomId)[0] || null);
       }
     } catch (err) {
-      console.error(err);
+      //console.error(err);
       toast.error("Failed to delete chatroom.");
     }
   };
@@ -124,7 +123,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
       });
     } catch (err) {
       toast.error("Error getting chatrooms. Check Console");
-      console.log(err);
+      //console.log(err);
       setLoadingChatrooms(false);
       return;
     }
@@ -148,7 +147,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
             });
             counts[room._id] = Array.isArray(response.data) ? response.data.length : 0;
           } catch (err) {
-            console.error(`Error fetching unread count for room ${room._id}:`, err);
+            //console.error(`Error fetching unread count for room ${room._id}:`, err);
             counts[room._id] = 0;
           }
         }

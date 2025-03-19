@@ -78,7 +78,7 @@ export const Login = ({ setLoggedIn, setUserId, setUsername, apiroot }) => {
                 });
             }
         } catch(err) {
-            console.log(err);
+            //console.log(err);
             setLoggedIn(false);
             usernameRef.current.focus();
             toast.error("Login: Failed to login. Check console for error");
@@ -125,7 +125,7 @@ export const Login = ({ setLoggedIn, setUserId, setUsername, apiroot }) => {
             await loginRequest(values);
 
         } catch(err) {
-            console.log(err);
+            //console.log(err);
             setLoggedIn(false);
             usernameRef.current.focus();
             toast.error("Register: Failed to register. Check console for error");

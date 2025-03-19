@@ -42,7 +42,7 @@ export const SettingsModal = ({ onClose, darkMode, toggleDarkMode, apiroot }) =>
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      console.error(err);
+      //console.error(err);
       setError("Failed to change password. Please check your current password and try again.");
       toast.error("Failed to change password.");
     } finally {

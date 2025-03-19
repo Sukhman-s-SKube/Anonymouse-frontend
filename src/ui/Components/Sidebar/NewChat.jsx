@@ -65,7 +65,7 @@ export const NewChat = ({ isOpen, toggle, apiroot, setNewChatCreated, setCurrCha
         }
       );
     } catch (err) {
-      console.log(err);
+      //console.log(err);
       return toast.error("Chatroom could not be created.");
     }
     setNewChatCreated(response.data);

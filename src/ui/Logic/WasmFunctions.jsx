@@ -7,22 +7,6 @@ export const generateDHKeys = async (numKeys) => {
     });
 };
 
-// Paramters (3): otherPubDH string, msg string, timestamp string
-export const encryptMsg = async (otherPubDH, msg, timestamp) => {
-    return new Promise((resolve) => {
-        const res = window.encryptMsg(otherPubDH, msg, timestamp);
-        resolve(res);
-    });
-};
-
-// Paramters (4): cipherText string, timestamp string, otherPubDH string || masterSec string, myPrvDH string || null
-export const decryptMsg = async (cipherText, timestamp, otherPubDH, myPrvDH) => {
-    return new Promise((resolve) => {
-        const res = window.decryptMsg(cipherText, timestamp, otherPubDH, myPrvDH);
-        resolve(res);
-    });
-};
-
 // call on registration, no Paramters
 export const genOnRegister = async () => {
     return new Promise((resolve) => {

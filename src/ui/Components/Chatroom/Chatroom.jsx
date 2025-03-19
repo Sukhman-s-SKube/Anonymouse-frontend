@@ -55,7 +55,7 @@ export const Chatroom = ({ chatroom, userId, socket, apiroot }) => {
         headers: { Authorization: sessionStorage.getItem("JWT") },
       });
     } catch (err) {
-      console.log(err);
+      //console.log(err);
       toast.error("Msg In: Check console for error");
     }
   };
@@ -166,7 +166,7 @@ export const Chatroom = ({ chatroom, userId, socket, apiroot }) => {
         let res = await mKDecrypt(outMsgKeys.current[hash], data.message.content);
         res = JSON.parse(res);
         if (res.err !== "") {
-          console.log(res.err);
+          //console.log(res.err);
           return toast.error("Msg In: Failed to send Message. Check console for error");
         }
         delete outMsgKeys.current[hash];
@@ -182,7 +182,7 @@ export const Chatroom = ({ chatroom, userId, socket, apiroot }) => {
         try {
           await parseMessage(data);
         } catch(err) {
-          console.error(err);
+          //console.error(err);
           return toast.error("Getting Msg: Failed to load message.");
         }
         window.electron.sysNoti("New Message", `New message from ${chatroom.name}`);
@@ -216,7 +216,7 @@ export const Chatroom = ({ chatroom, userId, socket, apiroot }) => {
       });
     } catch (err) {
       toast.error("Error getting messages. Check Console");
-      console.log(err);
+      //console.log(err);
     }
 
     let msgIds = [];
@@ -225,7 +225,7 @@ export const Chatroom = ({ chatroom, userId, socket, apiroot }) => {
       try {
         await initMsgReceive(firstMsg);
       } catch(err) {
-        console.error(err);
+        //console.error(err);
         return toast.error("Getting Msg: Failed to load message.");
       }
       msgIds.push(firstMsg._id);
@@ -237,7 +237,7 @@ export const Chatroom = ({ chatroom, userId, socket, apiroot }) => {
           await parseMessage(response.data[i]);
           msgIds.push(response.data[i]._id);
         } catch(err) {
-          console.error(err);
+          //console.error(err);
           return toast.error("Getting Msg: Failed to load message.");
         }
       }
@@ -320,7 +320,7 @@ export const Chatroom = ({ chatroom, userId, socket, apiroot }) => {
       try {
         payload = await initMsgSend(timestamp, values);
       } catch (err) {
-        console.error(err);
+        //console.error(err);
         return toast.error("Sending Msg: Failed to send message. Message remains pending.");
       }
     }
@@ -330,7 +330,7 @@ export const Chatroom = ({ chatroom, userId, socket, apiroot }) => {
         let initSendChain = await senderFirst(dbChatroom.other_pub_dh, dbChatroom.root_key, values.msg, timestamp);
         initSendChain = JSON.parse(initSendChain);
         if (initSendChain.err !== "") {
-          console.error(initSendChain.err);
+          //console.error(initSendChain.err);
           return toast.error("Sending Msg: Failed to send message. Message remains pending.");
         }
         await window.electron.updateChatroom({
@@ -352,7 +352,7 @@ export const Chatroom = ({ chatroom, userId, socket, apiroot }) => {
         let conSendChain = await sender(dbChatroom.send_chain_key, values.msg, timestamp);
         conSendChain = JSON.parse(conSendChain);
         if (conSendChain.err !== "") {
-          console.error(conSendChain.err);
+          //console.error(conSendChain.err);
           return toast.error("Sending Msg: Failed to send message. Message remains pending.");
         }
         await window.electron.updateChatroom({sck: conSendChain.sCK}, chatroom._id, userId);
