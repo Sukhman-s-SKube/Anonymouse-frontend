@@ -6,6 +6,7 @@ export const ChatNotifications = ({
   userId,
   currentChatroomId,
   chatrooms,
+  unreadCounts,
   setUnreadCounts,
 }) => {
   useEffect(() => {
@@ -31,7 +32,21 @@ export const ChatNotifications = ({
     return () => {
       socket.off("newMessage", handleNewMessage);
     };
-  }, [socket, userId, currentChatroomId, chatrooms, setUnreadCounts]);
+  }, [socket, userId, currentChatroomId, chatrooms]);
+
+  useEffect(() => {
+    if (!unreadCounts) {
+      window.electron.setBadgeNotiCount(0);
+      return;
+    }
+
+    let notiCount = 0;
+    for (let room in unreadCounts) {
+      notiCount += unreadCounts[room];
+    }
+    window.electron.setBadgeNotiCount(notiCount);
+
+  }, [unreadCounts])
 
   return null;
 };

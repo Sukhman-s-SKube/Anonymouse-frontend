@@ -132,10 +132,12 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
     response.data.forEach((room) => {
       soc.emit("joinRoom", { chatroomId: room._id });
     });
+    setLoadingChatrooms(false)
   };
 
   useEffect(() => {
     const updateUnreadCounts = async () => {
+      setLoadingChatrooms(true)
       const counts = {};
       for (const room of chatrooms) {
         if (room?._id) {
@@ -203,6 +205,7 @@ export const HomePage = ({ loggedIn, username, userId, apiroot, darkMode, setDar
           userId={userId}
           currentChatroomId={currChatroom ? currChatroom._id : undefined}
           chatrooms={chatrooms}
+          unreadCounts={unreadCounts}
           setUnreadCounts={setUnreadCounts}
         />
       )}

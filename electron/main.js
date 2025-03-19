@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, Notification } from 'electron';
 import path from 'path'; 
 import isDev from 'electron-is-dev';
 import database from 'better-sqlite3-multiple-ciphers';
+import Badge from 'electron-windows-badge';
 import { createHash } from 'crypto';
 import fs from "fs";
 
@@ -65,12 +66,20 @@ app.on('ready', () => {
         width: 1280,
         height: 720,
         webPreferences: {
-            preload: path.join(app.getAppPath(), isDev ? '.' : '..', '/electron/preload.cjs')
-        }
+            preload: path.join(app.getAppPath(), isDev ? '.' : '..', '/electron/preload.cjs'),
+            // devTools: isDev
+        },
+        title: 'AnonyMouse'
     });
 
     if (isDev) win.loadURL('http://localhost:3000');
     else win.loadFile(path.join(app.getAppPath(), '/dist-react/index.html'));
+
+    if (process.platform == 'win32') {
+        app.setAppUserModelId(app.name);
+        new Badge(win);
+    }
+
 });
 
 app.on('window-all-closed', () => {
@@ -80,7 +89,7 @@ app.on('window-all-closed', () => {
 });
   
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0)  createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
 ipcMain.handle("createDB", async (event, userId) => {

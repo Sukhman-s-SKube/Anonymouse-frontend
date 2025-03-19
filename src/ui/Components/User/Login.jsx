@@ -137,7 +137,7 @@ export const Login = ({ setLoggedIn, setUserId, setUsername, apiroot }) => {
     };
 
     return(
-        <div className={`w-[300px] mt-[100px] mb-[100px] mr-auto ml-auto text-center`}>
+        <div className={`w-[300px] mt-[100px] mb-[100px] mr-auto ml-auto text-left`}>
             <h2 className="text-center text-2xl font-bold">{isLoginToggled ? 'Login' : "Register"}</h2>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(isLoginToggled ? loginRequest : registerRequest)} className="space-y-8">
