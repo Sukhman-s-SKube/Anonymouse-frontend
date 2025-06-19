@@ -10,7 +10,7 @@ import { lightTheme, darkTheme } from '@/Components/ui/themes';
 import './App.css';
 import './wasm_exec.js';
 
-const apiroot = 'https://se4450.duckdns.org/api';
+const apiroot = 'http://10.0.0.246/api';
 
 const App = () => {
   
